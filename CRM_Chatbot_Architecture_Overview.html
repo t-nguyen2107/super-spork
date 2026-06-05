@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CRM Chatbot — Architecture Overview</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #0d1117;
+  --bg2:      #161b22;
+  --bg3:      #1c2330;
+  --border:   #30363d;
+  --text:     #e6edf3;
+  --muted:    #8b949e;
+  --blue:     #58a6ff;
+  --blue-dim: #1f3a5a;
+  --teal:     #39d353;
+  --teal-dim: #12291d;
+  --amber:    #d29922;
+  --amber-dim:#2d1f00;
+  --purple:   #bc8cff;
+  --purple-dim:#2d1f4e;
+  --red:      #f85149;
+  --tag-bg:   #21262d;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.7;
+  padding: 0;
+}
+
+/* ── Layout ── */
+.page { max-width: 960px; margin: 0 auto; padding: 48px 32px 80px; }
+
+/* ── Header ── */
+.header {
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 32px;
+  margin-bottom: 48px;
+}
+.header-eyebrow {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  color: var(--teal);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.header h1 {
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.2;
+  margin-bottom: 10px;
+}
+.header-sub {
+  color: var(--muted);
+  font-size: 15px;
+  max-width: 600px;
+}
+.badge-row { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+.badge {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px;
+  padding: 3px 10px;
+  border-radius: 20px;
+  border: 1px solid;
+}
+.badge-blue   { background: var(--blue-dim);   color: var(--blue);   border-color: #2d5a8e; }
+.badge-teal   { background: var(--teal-dim);   color: var(--teal);   border-color: #1a4a2e; }
+.badge-amber  { background: var(--amber-dim);  color: var(--amber);  border-color: #4a3400; }
+.badge-purple { background: var(--purple-dim); color: var(--purple); border-color: #4a2d8a; }
+
+/* ── Section ── */
+.section { margin-bottom: 56px; }
+.section-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .15em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.section h2 {
+  font-size: 21px;
+  font-weight: 600;
+  color: var(--text);
+  margin-bottom: 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.section p { color: #c9d1d9; margin-bottom: 12px; }
+
+/* ── Approach cards ── */
+.approaches { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 8px; }
+@media(max-width:680px){ .approaches { grid-template-columns: 1fr; } }
+.approach-card {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px 20px;
+  position: relative;
+}
+.approach-card.recommended {
+  border-color: var(--blue);
+  background: #0d1f35;
+}
+.approach-card .rec-tag {
+  position: absolute; top: 14px; right: 14px;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--blue);
+  background: var(--blue-dim);
+  border: 1px solid #2d5a8e;
+  border-radius: 20px; padding: 2px 9px;
+}
+.approach-num {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--muted);
+  margin-bottom: 5px;
+}
+.approach-card h3 { font-size: 14px; font-weight: 600; color: var(--text); margin-bottom: 8px; }
+.approach-card p  { font-size: 13px; color: var(--muted); margin: 0; line-height: 1.55; }
+.approach-meta {
+  display: flex; gap: 14px; margin-top: 12px; flex-wrap: wrap;
+}
+.approach-meta span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; color: var(--muted);
+}
+.approach-meta span strong { color: var(--text); }
+
+/* ── Comparison matrix ── */
+.matrix-wrap { overflow-x: auto; }
+table {
+  width: 100%; border-collapse: collapse;
+  font-size: 13px;
+}
+thead tr { border-bottom: 1px solid var(--border); }
+th {
+  padding: 10px 14px;
+  text-align: center;
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  color: var(--muted);
+  white-space: nowrap;
+}
+th:first-child { text-align: left; }
+th.col-rec { color: var(--blue); }
+tbody tr { border-bottom: 1px solid #21262d; }
+tbody tr:last-child { border-bottom: none; }
+td {
+  padding: 10px 14px;
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+}
+td:first-child { text-align: left; color: var(--text); font-weight: 500; }
+td.col-rec { background: #0d1f35; }
+
+/* ── Recommendation block ── */
+.rec-block {
+  background: var(--bg2);
+  border: 1px solid var(--blue);
+  border-radius: 10px;
+  padding: 24px 28px;
+  margin-bottom: 28px;
+}
+.rec-block h3 {
+  font-size: 16px; font-weight: 600;
+  color: var(--blue); margin-bottom: 10px;
+}
+.rec-block p { color: #c9d1d9; font-size: 14px; margin-bottom: 10px; }
+.rec-block p:last-child { margin-bottom: 0; }
+
+/* ── Phase cards ── */
+.phase-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media(max-width:680px){ .phase-grid { grid-template-columns: 1fr; } }
+.phase-card {
+  border-radius: 10px;
+  padding: 22px 24px;
+  border: 1px solid;
+}
+.phase-p1 { background: #0d1f35; border-color: var(--blue); }
+.phase-p2 { background: #12291d; border-color: #1a4a2e; }
+.phase-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; letter-spacing: .12em;
+  text-transform: uppercase; margin-bottom: 6px;
+}
+.phase-p1 .phase-label { color: var(--blue); }
+.phase-p2 .phase-label { color: var(--teal); }
+.phase-card h3 { font-size: 16px; font-weight: 600; color: var(--text); margin-bottom: 10px; }
+.phase-card p  { font-size: 13px; color: var(--muted); line-height: 1.6; margin-bottom: 8px; }
+.phase-card p:last-child { margin-bottom: 0; }
+.phase-stack {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-top: 14px;
+}
+.phase-stack span {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; padding: 3px 9px;
+  border-radius: 4px; background: var(--tag-bg); color: var(--muted);
+}
+
+/* ── Diagrams ── */
+.diagram-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 28px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+}
+.diagram-caption {
+  font-size: 12px; color: var(--muted);
+  font-family: 'IBM Plex Mono', monospace;
+  margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--border);
+  line-height: 1.55;
+}
+
+/* ── SVG shared styles ── */
+.d-box-blue   { fill: #0d1f35; stroke: #2d5a8e; }
+.d-box-teal   { fill: #0d1f1d; stroke: #1a4a2e; }
+.d-box-amber  { fill: #1a1200; stroke: #4a3400; }
+.d-box-purple { fill: #1a1030; stroke: #4a2d8a; }
+.d-box-gray   { fill: #161b22; stroke: #30363d; }
+.d-text-p     { fill: #e6edf3; font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; font-weight: 500; }
+.d-text-s     { fill: #8b949e; font-family: 'IBM Plex Sans', sans-serif; font-size: 11px; }
+.d-text-m     { fill: #8b949e; font-family: 'IBM Plex Mono', monospace; font-size: 10px; }
+.d-arrow      { stroke: #58a6ff; stroke-width: 1.5; fill: none; marker-end: url(#arr-blue); }
+.d-arrow-g    { stroke: #39d353; stroke-width: 1.5; fill: none; marker-end: url(#arr-teal); }
+.d-arrow-muted{ stroke: #30363d; stroke-width: 1; fill: none; stroke-dasharray: 4 3; marker-end: url(#arr-muted); }
+
+/* ── Key insights ── */
+.insights { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-top: 8px; }
+@media(max-width:680px){ .insights { grid-template-columns: 1fr; } }
+.insight {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px 18px;
+}
+.insight-label {
+  font-family: 'IBM Plex Mono', monospace;
+  font-size: 10px; color: var(--teal);
+  letter-spacing: .1em; text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.insight p { font-size: 13px; color: var(--muted); line-height: 1.55; margin: 0; }
+.insight p strong { color: var(--text); }
+
+/* ── Footer ── */
+.footer {
+  margin-top: 64px; padding-top: 24px;
+  border-top: 1px solid var(--border);
+  display: flex; justify-content: space-between; align-items: center;
+  flex-wrap: wrap; gap: 8px;
+}
+.footer span { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- ══ HEADER ══ -->
+<header class="header">
+  <div class="header-eyebrow">Architecture Decision Record</div>
+  <h1>CRM Chatbot Integration<br>Architecture Overview</h1>
+  <p class="header-sub">Approach comparison, recommendation, and phased implementation plan for integrating a chatbot with a PostgreSQL CRM (78k contacts · 8k deals).</p>
+  <div class="badge-row">
+    <span class="badge badge-teal">PostgreSQL</span>
+    <span class="badge badge-blue">Ollama · local LLM</span>
+    <span class="badge badge-amber">pgvector</span>
+    <span class="badge badge-purple">Tool Calling</span>
+  </div>
+</header>
+
+<!-- ══ SECTION 1: Five approaches ══ -->
+<section class="section">
+  <div class="section-label">Section 01</div>
+  <h2>The Five Main Approaches</h2>
+  <p>Before choosing an implementation strategy, here is a breakdown of the five main patterns for connecting a chatbot to a CRM database. Each has a different tradeoff between setup complexity, query accuracy, token cost, and security.</p>
+
+  <div class="approaches">
+
+    <div class="approach-card">
+      <div class="approach-num">Approach 01</div>
+      <h3>Direct SQL — NL2SQL</h3>
+      <p>The LLM generates SQL from the user query, executes it against Postgres, and returns the structured result. Fastest to set up but exposes the schema and carries SQL injection risk.</p>
+      <div class="approach-meta">
+        <span><strong>Cost:</strong> Low–Med</span>
+        <span><strong>Tokens/query:</strong> ~500–1,500</span>
+        <span><strong>Local:</strong> ✓</span>
+      </div>
+    </div>
+
+    <div class="approach-card">
+      <div class="approach-num">Approach 02</div>
+      <h3>Vector RAG (embeddings)</h3>
+      <p>Embed all contacts and deals, store in pgvector. Semantic similarity search retrieves the top-K relevant records per query. Good for fuzzy "find someone like..." queries.</p>
+      <div class="approach-meta">
+        <span><strong>Cost:</strong> Medium</span>
+        <span><strong>Tokens/query:</strong> ~1,000–3,000</span>
+        <span><strong>Local:</strong> ✓</span>
+      </div>
+    </div>
+
+    <div class="approach-card">
+      <div class="approach-num">Approach 03</div>
+      <h3>Pre-computed summaries</h3>
+      <p>Batch jobs periodically summarise and tag records. The LLM queries the index rather than raw rows. Lowest per-query cost but significant batch infrastructure and staleness risk.</p>
+      <div class="approach-meta">
+        <span><strong>Cost:</strong> High upfront, low/query</span>
+        <span><strong>Tokens/query:</strong> ~300–800</span>
+        <span><strong>Local:</strong> ✓ (costly batches)</span>
+      </div>
+    </div>
+
+    <div class="approach-card recommended">
+      <span class="rec-tag">★ Recommended</span>
+      <div class="approach-num">Approach 04</div>
+      <h3>Hybrid — Vector + SQL</h3>
+      <p>Vector similarity for semantic relevance combined with SQL predicates for structured filters (date ranges, deal value, owner). Both run in Postgres via pgvector — no separate infrastructure.</p>
+      <div class="approach-meta">
+        <span><strong>Cost:</strong> Medium</span>
+        <span><strong>Tokens/query:</strong> ~800–2,000</span>
+        <span><strong>Local:</strong> ✓</span>
+      </div>
+    </div>
+
+    <div class="approach-card" style="grid-column:1/-1; max-width:50%;">
+      <div class="approach-num">Approach 05 · MVP starting point</div>
+      <h3>Tool / Function Calling</h3>
+      <p>The LLM decides which CRM "tool" to call — <code style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#bc8cff">search_contacts</code>, <code style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#bc8cff">get_deal</code>, <code style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:#bc8cff">filter_by_stage</code>. Each tool maps to a safe parameterised query. No raw schema exposure, no SQL injection surface, and it handles 80% of chatbot use cases.</p>
+      <div class="approach-meta">
+        <span><strong>Cost:</strong> Low–Med</span>
+        <span><strong>Tokens/query:</strong> ~600–1,200</span>
+        <span><strong>Local:</strong> ✓ (needs tool-capable model)</span>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<!-- ══ SECTION 2: Comparison matrix ══ -->
+<section class="section">
+  <div class="section-label">Section 02</div>
+  <h2>Comparison Matrix</h2>
+  <p>All five approaches work with 86k records and can run fully locally. The differences are in accuracy, security posture, data freshness, and setup effort.</p>
+
+  <div class="matrix-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Dimension</th>
+          <th>NL2SQL</th>
+          <th>Vector RAG</th>
+          <th>Pre-computed</th>
+          <th class="col-rec">Hybrid ★</th>
+          <th>Tool Calling</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Setup effort</td>
+          <td>🟢 Low</td><td>🟡 Medium</td><td>🔴 High</td>
+          <td class="col-rec">🟡 Medium</td><td>🟡 Medium</td>
+        </tr>
+        <tr>
+          <td>Query accuracy</td>
+          <td>🟡 Medium</td><td>🟡 Medium</td><td>🟡 Medium</td>
+          <td class="col-rec">🟢 High</td><td>🟢 High</td>
+        </tr>
+        <tr>
+          <td>Token cost / query</td>
+          <td>🟢 Low</td><td>🟡 Medium</td><td>🟢 Low</td>
+          <td class="col-rec">🟡 Medium</td><td>🟢 Low</td>
+        </tr>
+        <tr>
+          <td>SQL injection risk</td>
+          <td>🔴 Higher</td><td>🟢 None</td><td>🟢 None</td>
+          <td class="col-rec">🟡 Low</td><td>🟢 None</td>
+        </tr>
+        <tr>
+          <td>Data freshness</td>
+          <td>🟢 Real-time</td><td>🟡 Sync delay</td><td>🔴 Batch lag</td>
+          <td class="col-rec">🟡 Sync delay</td><td>🟢 Real-time</td>
+        </tr>
+        <tr>
+          <td>Run fully local</td>
+          <td>✓</td><td>✓</td><td>✓</td>
+          <td class="col-rec">✓</td><td>✓</td>
+        </tr>
+        <tr>
+          <td>Scales to 86k rows</td>
+          <td>🟢 Yes</td><td>🟢 Yes</td><td>🟢 Yes</td>
+          <td class="col-rec">🟢 Yes</td><td>🟢 Yes</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ SECTION 3: Recommendation ══ -->
+<section class="section">
+  <div class="section-label">Section 03</div>
+  <h2>Recommendation</h2>
+
+  <div class="rec-block">
+    <h3>Hybrid (Approach 4) — with Tool Calling (Approach 5) as the MVP</h3>
+    <p><strong>Phase 1:</strong> Build with tool calling first (2–3 weeks). Define 5–8 explicit CRM tools — <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">search_contacts</code>, <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">get_deals</code>, <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">get_contact_history</code>, etc. Each maps to a safe parameterised Postgres query. No vector infrastructure needed yet, zero schema exposure, and this handles 80% of chatbot use cases on day one.</p>
+    <p><strong>Phase 2:</strong> Add pgvector for fuzzy semantic queries — "find contacts similar to our Singapore clients", "anyone in fintech we haven't contacted recently". The pgvector extension runs inside the same Postgres instance, so no new infrastructure is needed. The tool calling layer from Phase 1 is unchanged — Phase 2 just adds a new <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">semantic_search_contacts</code> tool alongside the existing ones.</p>
+  </div>
+
+  <div class="insights">
+    <div class="insight">
+      <div class="insight-label">Key design principle</div>
+      <p><strong>Never let the LLM write free-form SQL against production.</strong> Either parameterised tools or a read-only replica with a restricted role. The tool schema is the security boundary.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Context window budget</div>
+      <p><strong>78k contacts at even a single sentence each is too large to pass raw.</strong> Always retrieve-then-filter — target 10–20 records passed to the LLM per query turn.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Embedding cost</div>
+      <p>86k records × ~512 tokens ≈ 44M tokens — roughly <strong>$4–8 one-time</strong> with OpenAI's embedding API, or <strong>free</strong> if run locally with <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">nomic-embed-text</code>.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Local stack</div>
+      <p>Ollama + <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">nomic-embed-text</code> + <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">qwen2.5:14b</code> + Postgres with pgvector. Fully air-gapped if needed — important for insurance data sensitivity.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 4: Phases ══ -->
+<section class="section">
+  <div class="section-label">Section 04</div>
+  <h2>Phase Rationale</h2>
+  <p>The two-phase approach delivers value fast while keeping the architecture incrementally extensible. Phase 1 can be demo-ready in days; Phase 2 upgrades the same codebase without rebuilding anything.</p>
+
+  <div class="phase-grid">
+    <div class="phase-card phase-p1">
+      <div class="phase-label">Phase 1 · MVP</div>
+      <h3>Tool Calling</h3>
+      <p>Define an explicit API surface of 5–8 CRM tools with typed parameters and enum constraints. The LLM selects and calls tools rather than generating SQL. Every query hits a parameterised function — no schema exposure, no injection surface.</p>
+      <p>Covers: contact lookup by name/company/country/industry, deal filtering by stage/owner/value/date, pipeline summary, activity history, multi-hop queries (search contact → get their deals).</p>
+      <p><strong>Outcome:</strong> A fully working chatbot that correctly answers ~80% of CRM queries with real-time data freshness.</p>
+      <div class="phase-stack">
+        <span>Python</span><span>openai SDK</span><span>qwen2.5:7b</span><span>Postgres 16</span><span>Docker</span>
+      </div>
+    </div>
+
+    <div class="phase-card phase-p2">
+      <div class="phase-label">Phase 2 · Hybrid</div>
+      <h3>pgvector Semantic Search</h3>
+      <p>Add a <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">contact_embeddings</code> table alongside the existing schema. A background sync worker re-embeds changed records. HNSW index on the vector column for sub-100ms ANN search at 86k rows.</p>
+      <p>Unlocks fuzzy queries impossible with tool calling alone: semantic similarity, implicit clustering ("companies like Acme"), cross-field relevance. The hybrid query combines <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">embedding &lt;=&gt; $1</code> cosine distance with SQL <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">WHERE</code> filters in a single round-trip.</p>
+      <p><strong>Outcome:</strong> Full semantic + structured query coverage. Phase 1 tools unchanged — Phase 2 adds one new tool.</p>
+      <div class="phase-stack">
+        <span>pgvector</span><span>HNSW index</span><span>nomic-embed-text</span><span>CDC trigger</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 5: Diagram 1 — Runtime Architecture ══ -->
+<section class="section">
+  <div class="section-label">Section 05</div>
+  <h2>Diagram 1 — Runtime Architecture</h2>
+  <p>How a user query flows through the chatbot, the LLM orchestrator, the tool/hybrid decision layer, and into Postgres. The dashed line shows the background embedding sync worker introduced in Phase 2.</p>
+
+  <div class="diagram-wrap">
+    <svg width="100%" viewBox="0 0 820 560" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-blue" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-teal" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#39d353" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-muted" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- User -->
+      <rect x="290" y="20" width="240" height="48" rx="8" class="d-box-gray" stroke-width="1"/>
+      <text x="410" y="40" text-anchor="middle" dominant-baseline="central" class="d-text-p">Chatbot UI / API</text>
+      <text x="410" y="57" text-anchor="middle" dominant-baseline="central" class="d-text-s">user query entry point</text>
+
+      <!-- Arrow down -->
+      <line x1="410" y1="68" x2="410" y2="108" class="d-arrow"/>
+
+      <!-- LLM -->
+      <rect x="255" y="108" width="310" height="56" rx="8" class="d-box-purple" stroke-width="1"/>
+      <text x="410" y="130" text-anchor="middle" dominant-baseline="central" class="d-text-p">LLM Orchestrator</text>
+      <text x="410" y="150" text-anchor="middle" dominant-baseline="central" class="d-text-s">GPT-4o · Claude · qwen2.5:7b (Ollama)</text>
+
+      <!-- Arrow down -->
+      <line x1="410" y1="164" x2="410" y2="204" class="d-arrow"/>
+
+      <!-- Tool Router -->
+      <rect x="255" y="204" width="310" height="56" rx="8" class="d-box-blue" stroke-width="1"/>
+      <text x="410" y="225" text-anchor="middle" dominant-baseline="central" class="d-text-p">Tool Router</text>
+      <text x="410" y="244" text-anchor="middle" dominant-baseline="central" class="d-text-s">structured vs semantic intent</text>
+
+      <!-- Left branch: tool calls -->
+      <path d="M 330 260 L 200 300" fill="none" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+      <text x="240" y="287" text-anchor="middle" class="d-text-m">structured</text>
+
+      <!-- Right branch: vector -->
+      <path d="M 490 260 L 600 300" fill="none" stroke="#39d353" stroke-width="1.5" marker-end="url(#arr-teal)"/>
+      <text x="555" y="287" text-anchor="middle" class="d-text-m" fill="#39d353">semantic (P2)</text>
+
+      <!-- Tool calls box -->
+      <rect x="80" y="300" width="240" height="56" rx="8" class="d-box-blue" stroke-width="1"/>
+      <text x="200" y="321" text-anchor="middle" dominant-baseline="central" class="d-text-p">Tool Calls (P1)</text>
+      <text x="200" y="341" text-anchor="middle" dominant-baseline="central" class="d-text-s">search_contacts · get_deals</text>
+
+      <!-- Vector search box -->
+      <rect x="480" y="300" width="200" height="56" rx="8" class="d-box-teal" stroke-width="1"/>
+      <text x="580" y="321" text-anchor="middle" dominant-baseline="central" class="d-text-p">Vector Search (P2)</text>
+      <text x="580" y="341" text-anchor="middle" dominant-baseline="central" class="d-text-s">pgvector ANN · HNSW</text>
+
+      <!-- Arrows to Postgres -->
+      <path d="M 200 356 L 200 410 L 320 420" fill="none" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-blue)"/>
+      <path d="M 580 356 L 580 410 L 500 420" fill="none" stroke="#39d353" stroke-width="1.5" marker-end="url(#arr-teal)"/>
+
+      <!-- Postgres -->
+      <rect x="260" y="410" width="300" height="60" rx="8" class="d-box-amber" stroke-width="1"/>
+      <text x="410" y="433" text-anchor="middle" dominant-baseline="central" class="d-text-p">PostgreSQL (CRM DB)</text>
+      <text x="410" y="454" text-anchor="middle" dominant-baseline="central" class="d-text-s">contacts · deals · embeddings (pgvector)</text>
+
+      <!-- Arrow to response -->
+      <line x1="410" y1="470" x2="410" y2="510" class="d-arrow"/>
+
+      <!-- Response -->
+      <rect x="290" y="510" width="240" height="44" rx="8" class="d-box-gray" stroke-width="1"/>
+      <text x="410" y="532" text-anchor="middle" dominant-baseline="central" class="d-text-p">Response to user</text>
+
+      <!-- Embed sync worker (dashed) -->
+      <rect x="660" y="370" width="140" height="56" rx="8" class="d-box-gray" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="730" y="391" text-anchor="middle" dominant-baseline="central" class="d-text-p">Embed Sync</text>
+      <text x="730" y="410" text-anchor="middle" dominant-baseline="central" class="d-text-s">Cron / CDC trigger</text>
+      <path d="M 660 398 L 562 440" fill="none" class="d-arrow-muted"/>
+
+      <!-- P1 / P2 labels -->
+      <rect x="80" y="290" width="38" height="16" rx="3" fill="#1f3a5a"/>
+      <text x="99" y="298" text-anchor="middle" dominant-baseline="central" class="d-text-m" fill="#58a6ff">P1</text>
+      <rect x="480" y="290" width="38" height="16" rx="3" fill="#12291d"/>
+      <text x="499" y="298" text-anchor="middle" dominant-baseline="central" class="d-text-m" fill="#39d353">P2</text>
+    </svg>
+
+    <div class="diagram-caption">
+      <strong>Blue paths</strong> = Phase 1 (tool calling). <strong>Green paths</strong> = Phase 2 additions (pgvector semantic search).
+      The dashed box and arrow show the background embedding sync worker, which re-embeds changed records on a CDC trigger or cron schedule.
+      Both paths converge on the same Postgres instance — no separate vector database required.
+    </div>
+  </div>
+</section>
+
+<!-- ══ SECTION 6: Diagram 2 — pgvector schema ══ -->
+<section class="section">
+  <div class="section-label">Section 06</div>
+  <h2>Diagram 2 — pgvector Schema &amp; Embedding Pipeline</h2>
+  <p>The table structure, HNSW index strategy, and how records flow from a CRM change event through text serialisation into a vector upsert. The <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">contact_embeddings</code> table is separate from <code style="font-family:'IBM Plex Mono',monospace;font-size:12px">contacts</code> so re-embedding never touches core CRM data.</p>
+
+  <div class="diagram-wrap">
+    <svg width="100%" viewBox="0 0 820 580" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="arr-b2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-t2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#39d353" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+        <marker id="arr-p2" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#bc8cff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </marker>
+      </defs>
+
+      <!-- Section label: Schema -->
+      <text x="30" y="26" class="d-text-m" fill="#58a6ff">SCHEMA</text>
+
+      <!-- contacts table -->
+      <rect x="30" y="40" width="190" height="136" rx="8" class="d-box-blue" stroke-width="1"/>
+      <rect x="30" y="40" width="190" height="28" rx="8" fill="#1f3a5a"/>
+      <rect x="30" y="60" width="190" height="8" fill="#1f3a5a"/>
+      <text x="125" y="56" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">contacts</text>
+      <text x="46" y="84"  dominant-baseline="central" class="d-text-m">id  uuid PK</text>
+      <text x="46" y="100" dominant-baseline="central" class="d-text-m">name  text</text>
+      <text x="46" y="116" dominant-baseline="central" class="d-text-m">company  text</text>
+      <text x="46" y="132" dominant-baseline="central" class="d-text-m">email  text</text>
+      <text x="46" y="148" dominant-baseline="central" class="d-text-m">updated_at  timestamptz</text>
+
+      <!-- deals table -->
+      <rect x="250" y="40" width="190" height="136" rx="8" class="d-box-blue" stroke-width="1"/>
+      <rect x="250" y="40" width="190" height="28" rx="8" fill="#1f3a5a"/>
+      <rect x="250" y="60" width="190" height="8" fill="#1f3a5a"/>
+      <text x="345" y="56" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">deals</text>
+      <text x="266" y="84"  dominant-baseline="central" class="d-text-m">id  uuid PK</text>
+      <text x="266" y="100" dominant-baseline="central" class="d-text-m">contact_id  uuid FK</text>
+      <text x="266" y="116" dominant-baseline="central" class="d-text-m">title  text</text>
+      <text x="266" y="132" dominant-baseline="central" class="d-text-m">value  numeric</text>
+      <text x="266" y="148" dominant-baseline="central" class="d-text-m">stage  text</text>
+
+      <!-- contact_embeddings table -->
+      <rect x="480" y="40" width="210" height="152" rx="8" class="d-box-teal" stroke-width="1"/>
+      <rect x="480" y="40" width="210" height="28" rx="8" fill="#0d1f1d"/>
+      <rect x="480" y="60" width="210" height="8" fill="#0d1f1d"/>
+      <text x="585" y="56" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12" fill="#39d353">contact_embeddings</text>
+      <text x="496" y="84"  dominant-baseline="central" class="d-text-m">contact_id  uuid FK</text>
+      <text x="496" y="100" dominant-baseline="central" class="d-text-m" fill="#bc8cff">embedding  vector(768)</text>
+      <text x="496" y="116" dominant-baseline="central" class="d-text-m">embed_text  text</text>
+      <text x="496" y="132" dominant-baseline="central" class="d-text-m">model  text</text>
+      <text x="496" y="148" dominant-baseline="central" class="d-text-m">updated_at  timestamptz</text>
+
+      <!-- HNSW note -->
+      <text x="496" y="208" dominant-baseline="central" class="d-text-m" fill="#39d353">HNSW index on embedding</text>
+      <text x="496" y="224" dominant-baseline="central" class="d-text-m" fill="#39d353">operator: vector_cosine_ops</text>
+
+      <!-- FK arrow contacts → embeddings -->
+      <path d="M 440 108 L 478 108" fill="none" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-b2)"/>
+
+      <!-- Section label: Pipeline -->
+      <text x="30" y="272" class="d-text-m" fill="#58a6ff">EMBEDDING PIPELINE</text>
+
+      <!-- Step 1: Record changed -->
+      <rect x="30" y="286" width="180" height="56" rx="8" class="d-box-gray" stroke-width="1"/>
+      <text x="120" y="307" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">Record changed</text>
+      <text x="120" y="325" text-anchor="middle" dominant-baseline="central" class="d-text-s">INSERT / UPDATE trigger</text>
+
+      <line x1="210" y1="314" x2="248" y2="314" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#arr-b2)" fill="none"/>
+
+      <!-- Step 2: Serialise -->
+      <rect x="248" y="286" width="180" height="56" rx="8" class="d-box-gray" stroke-width="1"/>
+      <text x="338" y="307" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">Serialise record</text>
+      <text x="338" y="325" text-anchor="middle" dominant-baseline="central" class="d-text-s">name · company · notes · tags</text>
+
+      <line x1="428" y1="314" x2="466" y2="314" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#arr-p2)" fill="none"/>
+
+      <!-- Step 3: Embed model -->
+      <rect x="466" y="286" width="180" height="56" rx="8" class="d-box-purple" stroke-width="1"/>
+      <text x="556" y="307" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">Embed model</text>
+      <text x="556" y="325" text-anchor="middle" dominant-baseline="central" class="d-text-s">nomic-embed · mxbai · ada-002</text>
+
+      <!-- Down from embed model -->
+      <path d="M 556 342 L 556 390 L 450 390" fill="none" stroke="#bc8cff" stroke-width="1.5" marker-end="url(#arr-p2)"/>
+
+      <!-- Step 4: Upsert -->
+      <rect x="250" y="366" width="200" height="56" rx="8" class="d-box-teal" stroke-width="1"/>
+      <text x="350" y="387" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">Upsert to pgvector</text>
+      <text x="350" y="406" text-anchor="middle" dominant-baseline="central" class="d-text-s">ON CONFLICT DO UPDATE</text>
+
+      <line x1="350" y1="422" x2="350" y2="462" stroke="#39d353" stroke-width="1.5" marker-end="url(#arr-t2)" fill="none"/>
+
+      <!-- Hybrid query -->
+      <rect x="140" y="462" width="420" height="56" rx="8" class="d-box-amber" stroke-width="1"/>
+      <text x="350" y="483" text-anchor="middle" dominant-baseline="central" class="d-text-p" font-size="12">Hybrid query at runtime</text>
+      <text x="350" y="503" text-anchor="middle" dominant-baseline="central" class="d-text-s">ANN cosine distance + SQL WHERE filters · single round-trip</text>
+
+      <!-- Example query box -->
+      <rect x="30" y="536" width="580" height="34" rx="6" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="46" y="553" dominant-baseline="central" class="d-text-m">SELECT c.* FROM contacts c JOIN contact_embeddings e ON e.contact_id = c.id</text>
+      <text x="46" y="566" dominant-baseline="central" class="d-text-m">WHERE c.status = 'active'  ORDER BY e.embedding &lt;=&gt; $1  LIMIT 10</text>
+    </svg>
+
+    <div class="diagram-caption">
+      <strong>Key design decisions:</strong>
+      <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">contact_embeddings</code> is a separate table (not a column on <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">contacts</code>) — re-embedding never touches core CRM data and you can swap models by truncating and re-running the batch.
+      The <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">embed_text</code> column stores exactly what was embedded — essential for debugging retrieval misses.
+      HNSW index (<code style="font-family:'IBM Plex Mono',monospace;font-size:11px">m=16, ef_construction=64</code>) is preferred over IVFFlat at this scale — dynamic, no training step, ~30–40 MB memory overhead for 768-dim vectors at 86k rows.
+      The <code style="font-family:'IBM Plex Mono',monospace;font-size:11px">&lt;=&gt;</code> operator is cosine distance in pgvector — combine with SQL predicates for hybrid queries in a single Postgres round-trip.
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer class="footer">
+  <span>CRM Chatbot Architecture Overview</span>
+  <span>Stack: PostgreSQL 16 · Ollama · pgvector · Python</span>
+  <span>P1 → Tool Calling · P2 → Hybrid Vector + SQL</span>
+</footer>
+
+</div>
+</body>
+</html>
