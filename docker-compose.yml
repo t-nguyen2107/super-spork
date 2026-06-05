@@ -1,0 +1,17 @@
+version: "3.9"
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: crm_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: crm
+      POSTGRES_PASSWORD: crm_local_pw
+      POSTGRES_DB: crm
+    ports:
+      - "5432:5432"
+    volumes:
+      - crm_pgdata:/var/lib/postgresql/data
+
+volumes:
+  crm_pgdata:
