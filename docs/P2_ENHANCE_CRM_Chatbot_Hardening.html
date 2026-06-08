@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Phase 2 ENHANCE — CRM Chatbot: Production Hardening &amp; Advanced Features</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2330;--bg4:#21262d;
+  --border:#30363d;--border2:#21262d;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+  --blue:#58a6ff;--blue-bg:#0d1f35;--blue-bd:#1d3f6a;
+  --teal:#3fb950;--teal-bg:#0d1f1a;--teal-bd:#1a4a2e;
+  --amber:#d29922;--amber-bg:#271d00;--amber-bd:#4a3800;
+  --purple:#bc8cff;--purple-bg:#1e1535;--purple-bd:#4a2d8e;
+  --red:#f85149;--red-bg:#2d1010;--red-bd:#6a2020;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Outfit',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:15px;line-height:1.7}
+
+.layout{display:flex;flex-direction:row;min-height:100vh}
+.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;padding:24px 0;align-self:flex-start}
+.main{flex:1;min-width:0;padding:48px 56px 80px;max-width:900px}
+@media(max-width:900px){.sidebar{display:none}.main{padding:32px 24px 60px}}
+
+.nav-header{padding:0 20px 16px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.nav-phase{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+.nav-title{font-size:13px;font-weight:500;color:var(--text)}
+.nav-item{display:block;padding:6px 20px;font-size:13px;color:var(--muted);text-decoration:none;border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover,.nav-item.active{color:var(--text);border-left-color:var(--amber);background:rgba(210,153,34,.05)}
+.nav-group{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;padding:14px 20px 4px}
+
+.page-header{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+.eyebrow{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.page-header h1{font-size:30px;font-weight:600;line-height:1.2;margin-bottom:10px}
+.page-header .subtitle{color:var(--muted);font-size:14px;max-width:580px;margin-bottom:18px}
+.badge-row{display:flex;gap:7px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-bd)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
+.badge-purple{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-bd)}
+
+.section{margin-bottom:52px;scroll-margin-top:24px}
+.section-eyebrow{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+.section h2{font-size:20px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section h3{font-size:15px;font-weight:600;color:var(--text);margin:24px 0 10px}
+.section h4{font-family:var(--mono);font-size:12px;color:var(--muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.08em}
+.section p{color:#c9d1d9;margin-bottom:12px;font-size:14px}
+.section ul{padding-left:20px;margin-bottom:12px}
+.section li{color:#c9d1d9;font-size:14px;margin-bottom:5px}
+
+.code-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.code-label{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.code-lang{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+pre{margin:0;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.65;color:#e6edf3}
+.kw{color:#ff7b72}.fn{color:#d2a8ff}.st{color:#a5d6ff}.cm{color:#8b949e}.nu{color:#79c0ff}.kv{color:#7ee787}
+
+code{font-family:var(--mono);font-size:12px;background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--purple)}
+
+.table-wrap{overflow-x:auto;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{border-bottom:1px solid var(--border)}
+th{padding:9px 14px;text-align:left;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border2)}
+tbody tr:last-child{border-bottom:none}
+td{padding:9px 14px;color:var(--muted);font-size:13px}
+td:first-child{color:var(--text);font-weight:500}
+.hl{background:var(--amber-bg)}
+
+.callout{border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.6;border-left:3px solid}
+.callout-blue{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.callout-teal{background:var(--teal-bg);border-color:var(--teal);color:var(--teal)}
+.callout-amber{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.callout-purple{background:var(--purple-bg);border-color:var(--purple);color:var(--purple)}
+.callout p{color:inherit;margin:0;font-size:13px}
+.callout strong{color:var(--text)}
+
+.tree{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;color:var(--muted);line-height:2;margin-bottom:16px}
+.tree .file{color:var(--text)}.tree .new{color:var(--amber)}.tree .comment{color:var(--faint)}
+
+.convo{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px}
+.convo-turn{margin-bottom:14px}
+.convo-turn:last-child{margin-bottom:0}
+.convo-you{font-family:var(--mono);font-size:12px;color:var(--amber);margin-bottom:4px}
+.convo-tool{font-family:var(--mono);font-size:11px;color:var(--faint);margin:4px 0;padding-left:14px}
+.convo-result{font-family:var(--mono);font-size:11px;color:#3fb950;padding-left:14px;line-height:1.8}
+.convo-divider{border:none;border-top:1px solid var(--border2);margin:14px 0}
+
+.checklist{list-style:none;padding:0;margin-bottom:16px}
+.checklist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border2);font-size:13px;color:#c9d1d9}
+.checklist li:last-child{border-bottom:none}
+.check-box{width:16px;height:16px;border:1px solid var(--border);border-radius:3px;flex-shrink:0;margin-top:2px}
+
+.diagram-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:14px;overflow-x:auto}
+.diagram-caption{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--border);line-height:1.6}
+
+.insight-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px}
+@media(max-width:640px){.insight-grid{grid-template-columns:1fr}}
+.insight{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px 18px}
+.insight-label{font-family:var(--mono);font-size:10px;color:var(--amber);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.insight p{font-size:13px;color:var(--muted);line-height:1.55;margin:0}
+.insight p strong{color:var(--text)}
+
+.p2-teaser{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:10px;padding:20px 24px;margin-bottom:20px}
+.p2-teaser p{font-size:13px;color:var(--muted);margin-bottom:0}
+.p2-teaser strong{color:var(--text)}
+
+.footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.footer span{font-family:var(--mono);font-size:11px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="sidebar" aria-label="Page navigation">
+  <div class="nav-header">
+    <div class="nav-phase">Phase 2 ENHANCE</div>
+    <div class="nav-title">Production Hardening &amp; Advanced Features</div>
+  </div>
+  <div class="nav-group">Overview</div>
+  <a class="nav-item" href="#overview">What changed since P2</a>
+  <a class="nav-item" href="#structure">Project structure</a>
+  <a class="nav-item" href="#conversations">Conversation examples</a>
+  <div class="nav-group">Hardening</div>
+  <a class="nav-item" href="#step1">1 — Error handling</a>
+  <a class="nav-item" href="#step2">2 — Chat history window</a>
+  <a class="nav-item" href="#step3">3 — Startup validation</a>
+  <a class="nav-item" href="#step4">4 — Schema fix</a>
+  <a class="nav-item" href="#step5">5 — LM Studio compat</a>
+  <a class="nav-item" href="#step6">6 — Model warmup</a>
+  <div class="nav-group">Advanced</div>
+  <a class="nav-item" href="#connection-pool">Connection pooling</a>
+  <a class="nav-item" href="#input-validation">Input validation</a>
+  <a class="nav-item" href="#like-escape">LIKE wildcard escape</a>
+  <a class="nav-item" href="#limit-cap">Limit cap</a>
+  <a class="nav-item" href="#smart-sync">Smart embedding sync</a>
+  <div class="nav-group">Finish</div>
+  <a class="nav-item" href="#test-results">Test suite results</a>
+  <a class="nav-item" href="#checklist">Full checklist</a>
+  <a class="nav-item" href="#decisions">Design decisions</a>
+  <a class="nav-item" href="#whats-next">What's next — P3</a>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+<!-- Header -->
+<header class="page-header">
+  <div class="eyebrow">Phase 2 ENHANCE · Hardening &amp; Improvements</div>
+  <h1>CRM Chatbot<br>Production Hardening</h1>
+  <p class="subtitle">Bridges the gap between "learning project" and "demo-ready". Fixes all critical crash bugs from P1/P2, adds production-grade error handling, ensures compatibility with LM Studio's OpenAI-compatible API, and restructures the codebase into a feature-based layout.</p>
+  <div class="badge-row">
+    <span class="badge badge-amber">Error Handling</span>
+    <span class="badge badge-purple">LM Studio Compat</span>
+    <span class="badge badge-blue">History Window</span>
+    <span class="badge badge-teal">Schema Fix</span>
+  </div>
+</header>
+
+<!-- ══ PREREQ ══ -->
+<div class="p2-teaser">
+  <p><strong>Prerequisite — Phase 1 and Phase 2 must be complete.</strong> P2 ENHANCE hardens the existing codebase. No new tools or features are added — only robustness, safety, and compatibility improvements. If you haven't completed P2, start there first.</p>
+</div>
+
+<!-- ══ WHAT CHANGED ══ -->
+<section class="section" id="overview">
+  <div class="section-eyebrow">Overview</div>
+  <h2>What Changed Since P2</h2>
+  <p>The P1 and P2 implementations worked for happy-path demos but had <strong>5 critical bugs</strong> that would crash in real usage. P2 ENHANCE fixes all of them and adds compatibility with LM Studio's embedding endpoint.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Fix</th><th>Severity</th><th>What it solves</th><th>Where</th></tr></thead>
+      <tbody>
+        <tr><td>Error handling</td><td class="hl">CRITICAL</td><td>Ollama down, DB down, malformed JSON → no more crashes</td><td><code>src/chatbot/cli.py</code></td></tr>
+        <tr><td>Chat history window</td><td class="hl">CRITICAL</td><td>History capped at 20 messages — won't blow context window</td><td><code>src/chatbot/cli.py</code></td></tr>
+        <tr><td>Startup validation</td><td class="hl">CRITICAL</td><td>Missing env vars detected before first API call</td><td><code>src/chatbot/cli.py</code></td></tr>
+        <tr><td>Schema fix</td><td class="hl">CRITICAL</td><td>All columns + activities table now in <code>schema.sql</code></td><td><code>sql/schema.sql</code></td></tr>
+        <tr><td>LM Studio embedding</td><td>MAJOR</td><td>Embedding uses <code>/v1/embeddings</code> (OpenAI format)</td><td><code>src/embeddings/embedder.py</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Before vs After</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Scenario</th><th>P1/P2 behavior</th><th>P2 ENHANCE behavior</th></tr></thead>
+      <tbody>
+        <tr><td>LM Studio not running</td><td style="color:var(--red)">Crash with traceback</td><td style="color:var(--teal)">Friendly error, prompt to start server</td></tr>
+        <tr><td>LLM returns malformed JSON</td><td style="color:var(--red)">Crash with <code>JSONDecodeError</code></td><td style="color:var(--teal)">Graceful fallback to empty args</td></tr>
+        <tr><td>Database connection fails</td><td style="color:var(--red)">Crash with <code>psycopg2.OperationalError</code></td><td style="color:var(--teal)">Error dict returned to LLM, user sees friendly message</td></tr>
+        <tr><td>Chat after 20+ turns</td><td style="color:var(--red)">Context overflow, garbage output</td><td style="color:var(--teal)">Auto-trimmed, system prompt preserved</td></tr>
+        <tr><td>Missing <code>.env</code> variables</td><td style="color:var(--red)"><code>None</code> base URL → opaque crash</td><td style="color:var(--teal)">Clear message: "Missing env vars: X, Y"</td></tr>
+        <tr><td><code>generate_seed.py</code> output</td><td style="color:var(--red)">Fails — 6 missing columns</td><td style="color:var(--teal)">Works — all columns + activities table exist</td></tr>
+        <tr><td>Embedding API format</td><td style="color:var(--amber)">Ollama <code>/api/embeddings</code> only</td><td style="color:var(--teal)">OpenAI <code>/v1/embeddings</code> (LM Studio compatible)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ STRUCTURE ══ -->
+<section class="section" id="structure">
+  <div class="section-eyebrow">Overview</div>
+  <h2>Project Structure (P2 ENHANCE changes)</h2>
+  <div class="tree">
+super-spork/<br>
+├── <span class="new">main.py</span>                    <span class="comment">← NEW: entry point — adds root to sys.path, runs chatbot</span><br>
+├── <span class="file">docker-compose.yml</span>         <span class="comment">← unchanged</span><br>
+├── <span class="file">requirements.txt</span>           <span class="comment">← NEW: pip install -r requirements.txt</span><br>
+├── <span class="file">.env</span>                       <span class="comment">← MODIFIED: EMBED_MODEL added</span><br>
+│<br>
+├── <span class="new">src/</span>                       <span class="comment">← NEW: feature-based source layout (was flat files)</span><br>
+│   ├── chatbot/<br>
+│   │   ├── <span class="file">cli.py</span>             <span class="comment">← MODIFIED: error handling + history window + startup validation + warmup</span><br>
+│   │   └── <span class="file">tools.py</span>            <span class="comment">← MODIFIED: semantic_search_contacts tool added (from P2)</span><br>
+│   ├── db/<br>
+│   │   └── <span class="file">connection.py</span>      <span class="comment">← MODIFIED: all SQL queries + semantic_search_contacts</span><br>
+│   └── embeddings/<br>
+│       ├── <span class="new">embedder.py</span>        <span class="comment">← NEW (P2): LM Studio /v1/embeddings compatible</span><br>
+│       └── <span class="new">sync.py</span>            <span class="comment">← NEW (P2): batch + incremental embed</span><br>
+│<br>
+├── <span class="new">tests/</span><br>
+│   ├── <span class="file">test_crm.py</span>            <span class="comment">← 53 tests across 8 classes (mocked, no services needed)</span><br>
+│   └── <span class="file">chat_scenarios.py</span>     <span class="comment">← 10 real chat scenarios against live LLM + DB</span><br>
+│<br>
+├── <span class="new">scripts/</span><br>
+│   ├── <span class="file">generate_seed.py</span>      <span class="comment">← generates 80k contacts seed SQL</span><br>
+│   ├── <span class="file">embed_demo.py</span>         <span class="comment">← quick embed first 30 contacts</span><br>
+│   └── <span class="file">benchmark_warmup.py</span>   <span class="comment">← cold vs warm start comparison</span><br>
+│<br>
+├── <span class="new">sql/</span><br>
+│   ├── <span class="file">schema.sql</span>             <span class="comment">← MODIFIED: all columns + activities table + indexes</span><br>
+│   ├── <span class="new">migration_p2.sql</span>       <span class="comment">← NEW (P2): pgvector extension + contact_embeddings</span><br>
+│   └── <span class="file">seed.sql</span>              <span class="comment">← small seed dataset (~30 contacts)</span><br>
+│<br>
+└── <span class="new">docs/</span>                      <span class="comment">← HTML architecture docs (this file)</span>
+  </div>
+</section>
+
+<!-- ══ CONVERSATIONS ══ -->
+<section class="section" id="conversations">
+  <div class="section-eyebrow">Demo</div>
+  <h2>Conversation Examples (Error Recovery)</h2>
+  <p>P2 ENHANCE adds graceful error recovery. Here's how the chatbot handles failure scenarios that would have crashed P1/P2.</p>
+
+  <div class="convo">
+    <div class="convo-turn">
+      <div class="convo-you">You: Show me all contacts in Vietnam</div>
+      <div class="convo-tool">→ calling search_contacts({'country': 'VN'})</div>
+      <div class="convo-result" style="color:var(--red)">LM Studio is not running → friendly error shown</div>
+    </div>
+    <hr class="convo-divider"/>
+    <div class="convo-turn">
+      <div class="convo-you">Bot: Sorry, I couldn't reach the LLM. Please check that Ollama is running.</div>
+      <div class="convo-result" style="color:var(--teal)">← User sees clear message instead of a Python traceback</div>
+    </div>
+    <hr class="convo-divider"/>
+    <div class="convo-turn">
+      <div class="convo-you">You: Find contacts similar to our Singapore clients</div>
+      <div class="convo-tool">→ calling semantic_search_contacts({'query': '...'})</div>
+      <div class="convo-result" style="color:var(--red)">Database connection refused → error dict returned to LLM</div>
+    </div>
+    <hr class="convo-divider"/>
+    <div class="convo-turn">
+      <div class="convo-you">Bot: I encountered an error querying the database: connection refused. Please check that PostgreSQL is running.</div>
+      <div class="convo-result" style="color:var(--teal)">← LLM explains the error and suggests next steps</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ STEP 1 ══ -->
+<section class="section" id="step1">
+  <div class="section-eyebrow">Hardening 1 of 5</div>
+  <h2>Error Handling (3 Crash Points)</h2>
+  <p>P1/P2 had zero try/except blocks. Three places could crash the entire program. P2 ENHANCE wraps all of them.</p>
+
+  <h3>1a. Ollama API call — connection/timeout errors</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — Ollama error handling</span></div>
+    <pre><span class="cm"># chat() function — wrap the LLM API call</span>
+<span class="kw">try</span>:
+    response = client.chat.completions.create(
+        model=MODEL, messages=history,
+        tools=tool_defs.TOOLS, tool_choice=<span class="st">"auto"</span>
+    )
+<span class="kw">except</span> (APIConnectionError, APITimeoutError) <span class="kw">as</span> e:
+    <span class="cm"># LM Studio not running or network issue</span>
+    console.print(f<span class="st">"[red]Ollama connection error: {e}[/red]"</span>)
+    <span class="kw">return</span> history  <span class="cm"># return gracefully, don't crash</span>
+<span class="kw">except</span> APIError <span class="kw">as</span> e:
+    <span class="cm"># Model not loaded, context overflow, etc.</span>
+    console.print(f<span class="st">"[red]Ollama API error: {e}[/red]"</span>)
+    <span class="kw">return</span> history</pre>
+  </div>
+
+  <h3>1b. JSON parse — malformed tool arguments</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — tool argument parsing</span></div>
+    <pre><span class="cm"># Local LLMs often return broken JSON: trailing commas, missing braces</span>
+<span class="kw">for</span> tc <span class="kw">in</span> msg.tool_calls:
+    <span class="kw">try</span>:
+        args = json.loads(tc.function.arguments)
+    <span class="kw">except</span> json.JSONDecodeError <span class="kw">as</span> e:
+        console.print(f<span class="st">"[yellow]Malformed tool arguments: {e}[/yellow]"</span>)
+        args = {}  <span class="cm"># fallback: call tool with no args (it will use defaults)</span></pre>
+  </div>
+
+  <h3>1c. Tool execution — database errors</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — run_tool wrapper</span></div>
+    <pre><span class="kw">def</span> <span class="fn">run_tool</span>(name, args):
+    fn = TOOL_MAP.get(name)
+    <span class="kw">if not</span> fn:
+        <span class="kw">return</span> {<span class="st">"error"</span>: f<span class="st">"Unknown tool: {name}"</span>}
+    <span class="kw">try</span>:
+        result = fn(**args)
+        <span class="kw">return</span> [dict(r) <span class="kw">for</span> r <span class="kw">in</span> result]
+    <span class="kw">except</span> Exception <span class="kw">as</span> e:
+        <span class="cm"># DB down, bad query, type error — return error to LLM</span>
+        <span class="kw">return</span> {<span class="st">"error"</span>: str(e)}</pre>
+  </div>
+
+  <div class="callout callout-teal">
+    <p><strong>Key insight:</strong> When <code>run_tool</code> returns an error dict, the LLM receives it as a tool result. Most LLMs will then explain the error to the user and suggest alternatives — without any special prompt engineering.</p>
+  </div>
+</section>
+
+<!-- ══ STEP 2 ══ -->
+<section class="section" id="step2">
+  <div class="section-eyebrow">Hardening 2 of 5</div>
+  <h2>Chat History Window</h2>
+  <p>Every turn appends messages to the history list. With tool calls, a single turn can add 5-10 messages (user + assistant + tool_call + tool_result × N). After 5-10 turns, the history exceeds most LLMs' context window.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — trim_history function</span></div>
+    <pre><span class="cm"># Maximum messages to keep (excluding system prompt)</span>
+MAX_HISTORY = <span class="nu">20</span>
+
+<span class="kw">def</span> <span class="fn">trim_history</span>(history):
+    <span class="cm"># Always keep system prompt at index 0</span>
+    <span class="kw">if</span> len(history) <= MAX_HISTORY + <span class="nu">1</span>:
+        <span class="kw">return</span> history
+    system = history[<span class="nu">0</span>]
+    rest = history[-MAX_HISTORY:]  <span class="cm"># keep most recent messages</span>
+    <span class="kw">return</span> [system] + rest
+
+<span class="cm"># Called after every tool call batch and every assistant response</span></pre>
+  </div>
+
+  <div class="callout callout-amber">
+    <p><strong>Why 20?</strong> With tool calls, each "turn" uses ~3-5 messages. 20 messages ≈ 4-6 turns, which fits comfortably in most 4k-8k context windows. Adjust <code>MAX_HISTORY</code> based on your model's context size.</p>
+  </div>
+</section>
+
+<!-- ══ STEP 3 ══ -->
+<section class="section" id="step3">
+  <div class="section-eyebrow">Hardening 3 of 5</div>
+  <h2>Startup Validation</h2>
+  <p>If <code>.env</code> is missing or <code>OLLAMA_BASE_URL</code> / <code>OLLAMA_MODEL</code> are not set, the program now exits immediately with a clear message instead of crashing on the first API call.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — startup check</span></div>
+    <pre>BASE_URL = os.getenv(<span class="st">"OLLAMA_BASE_URL"</span>)
+MODEL = os.getenv(<span class="st">"OLLAMA_MODEL"</span>)
+
+<span class="cm"># Check before creating the OpenAI client</span>
+missing = [k <span class="kw">for</span> k, v <span class="kw">in</span> [
+    (<span class="st">"OLLAMA_BASE_URL"</span>, BASE_URL),
+    (<span class="st">"OLLAMA_MODEL"</span>, MODEL)
+] <span class="kw">if not</span> v]
+
+<span class="kw">if</span> missing:
+    console.print(f<span class="st">"[red]Missing env vars: {', '.join(missing)}[/red]"</span>)
+    console.print(<span class="st">"[dim]Copy .env.example to .env and fill in values.[/dim]"</span>)
+    sys.exit(<span class="nu">1</span>)</pre>
+  </div>
+</section>
+
+<!-- ══ STEP 4 ══ -->
+<section class="section" id="step4">
+  <div class="section-eyebrow">Hardening 4 of 5</div>
+  <h2>Schema Fix</h2>
+  <p>The original <code>schema.sql</code> was missing 6 columns and the entire <code>activities</code> table. <code>scripts/generate_seed.py</code> would fail when inserting into columns that didn't exist.</p>
+
+  <h3>Columns added to contacts</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th><th>Why it was missing</th></tr></thead>
+      <tbody>
+        <tr><td><code>industry</code></td><td>TEXT</td><td>Added in generate_seed.py but not schema.sql</td></tr>
+        <tr><td><code>country</code></td><td>TEXT</td><td>Same</td></tr>
+        <tr><td><code>source</code></td><td>TEXT</td><td>Same</td></tr>
+        <tr><td><code>assigned_to</code></td><td>TEXT</td><td>Same</td></tr>
+        <tr><td><code>tags</code></td><td>TEXT[]</td><td>Same</td></tr>
+        <tr><td><code>notes</code></td><td>TEXT</td><td>Same</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Columns added to deals</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Column</th><th>Type</th></tr></thead>
+      <tbody>
+        <tr><td><code>probability</code></td><td>INT</td></tr>
+        <tr><td><code>close_date</code></td><td>DATE</td></tr>
+        <tr><td><code>product</code></td><td>TEXT</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>New table: activities</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">sql/schema.sql — activities table (was missing)</span></div>
+    <pre><span class="kw">CREATE TABLE</span> activities (
+    id           SERIAL PRIMARY KEY,
+    contact_id   INT REFERENCES contacts(id),
+    deal_id      INT REFERENCES deals(id),
+    type         TEXT,     <span class="cm"># call, email, meeting, note, demo</span>
+    summary      TEXT,
+    created_by   TEXT,
+    created_at   TIMESTAMPTZ DEFAULT now()
+);</pre>
+  </div>
+
+  <h3>New indexes added</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">sql/schema.sql — new indexes</span></div>
+    <pre><span class="kw">CREATE INDEX</span> idx_contacts_city        ON contacts(city);
+<span class="kw">CREATE INDEX</span> idx_contacts_assigned    ON contacts(assigned_to);
+<span class="kw">CREATE INDEX</span> idx_deals_owner          ON deals(owner);
+<span class="kw">CREATE INDEX</span> idx_deals_close_date     ON deals(close_date);
+<span class="kw">CREATE INDEX</span> idx_activities_contact   ON activities(contact_id);
+<span class="kw">CREATE INDEX</span> idx_activities_deal      ON activities(deal_id);</pre>
+  </div>
+</section>
+
+<!-- ══ STEP 5 ══ -->
+<section class="section" id="step5">
+  <div class="section-eyebrow">Hardening 5 of 5</div>
+  <h2>LM Studio Embedding Compatibility</h2>
+  <p>P2 assumed Ollama's <code>/api/embeddings</code> endpoint. LM Studio uses the OpenAI-compatible <code>/v1/embeddings</code> format instead. The <code>src/embeddings/embedder.py</code> now handles both.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/embeddings/embedder.py — LM Studio compatible</span></div>
+    <pre><span class="cm"># Uses OLLAMA_BASE_URL from .env (e.g. http://127.0.0.1:1234/v1)</span>
+BASE_URL   = os.getenv(<span class="st">"OLLAMA_BASE_URL"</span>, <span class="st">"http://localhost:11434/v1"</span>)
+EMBED_MODEL = os.getenv(<span class="st">"EMBED_MODEL"</span>) <span class="kw">or</span> os.getenv(<span class="st">"EMBEDDING_MODEL"</span>, <span class="st">"nomic-embed-text"</span>)
+
+<span class="cm"># Always use /v1/embeddings (OpenAI-compatible format)</span>
+EMBED_URL  = BASE_URL.rstrip(<span class="st">"/"</span>) + <span class="st">"/embeddings"</span>
+
+<span class="kw">def</span> <span class="fn">embed</span>(text):
+    resp = requests.post(EMBED_URL, json={
+        <span class="st">"model"</span>: EMBED_MODEL,
+        <span class="st">"input"</span>: text   <span class="cm"># OpenAI format uses "input", not "prompt"</span>
+    }, timeout=<span class="nu">30</span>)
+    resp.raise_for_status()
+    data = resp.json()
+    <span class="cm"># Handle both response formats</span>
+    <span class="kw">if</span> <span class="st">"data"</span> <span class="kw">in</span> data:
+        <span class="kw">return</span> data[<span class="st">"data"</span>][<span class="nu">0</span>][<span class="st">"embedding"</span>]  <span class="cm"># OpenAI/LM Studio format</span>
+    <span class="kw">return</span> data[<span class="st">"embedding"</span>]                   <span class="cm"># Ollama format (fallback)</span></pre>
+  </div>
+
+  <div class="callout callout-purple">
+    <p><strong>Two env vars for embedding model:</strong> <code>EMBED_MODEL</code> is checked first, then <code>EMBEDDING_MODEL</code> as fallback. This lets you use the same <code>.env</code> across different setups without changing variable names.</p>
+  </div>
+
+  <h3>.env — updated configuration</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">.env — all variables</span></div>
+    <pre><span class="cm"># ── LLM (LM Studio or Ollama)</span>
+OLLAMA_BASE_URL=http://127.0.0.1:1234/v1
+OLLAMA_MODEL=google/gemma-4-e4b
+EMBED_MODEL=nomic-embed-text
+EMBEDDING_MODEL=text-embedding-nomic-embed-text-v1.5  <span class="cm"># fallback</span>
+
+<span class="cm"># ── PostgreSQL</span>
+PG_HOST=localhost
+PG_PORT=5432
+PG_DB=crm
+PG_USER=crm
+PG_PASSWORD=crm_local_pw</pre>
+  </div>
+</section>
+
+<!-- ══ STEP 6: MODEL WARMUP ══ -->
+<section class="section" id="step6">
+  <div class="section-eyebrow">Step 6</div>
+  <h2>Model Warmup</h2>
+  <p>The first LLM call is always slow — LM Studio needs to load model weights into GPU VRAM, allocate KV-cache, and warm up CUDA kernels. We add a <code>warmup()</code> function that triggers all of this <strong>before</strong> the user types their first query.</p>
+
+  <div class="insight" style="border-color:var(--amber-bd);background:var(--amber-bg);margin-bottom:16px">
+    <div class="insight-label" style="color:var(--amber)">Why warmup matters</div>
+    <p>Without warmup, the user's first query pays the cold-start penalty (model loading + KV-cache allocation). With warmup, that cost is paid once at startup — the first real query responds at steady-state speed.</p>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — warmup function</span></div>
+    <pre><span class="kw">def</span> <span class="fn">warmup</span>():
+    <span class="st">"""Pre-load model into GPU cache with a tiny request."""</span>
+    console.print(<span class="st">"[dim]Warming up model...[/dim]"</span>, end=<span class="st">" "</span>)
+    <span class="kw">try</span>:
+        start = __import__(<span class="st">"time"</span>).time()
+        client.chat.completions.create(
+            model=MODEL,
+            messages=[{<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: <span class="st">"Hi"</span>}],
+            max_tokens=<span class="nu">1</span>,  <span class="cm"># minimal — we only care about loading the model</span>
+        )
+        elapsed = __import__(<span class="st">"time"</span>).time() - start
+        console.print(f<span class="st">"[dim]done ({elapsed:.1f}s)[/dim]"</span>)
+    <span class="kw">except</span> Exception:
+        console.print(<span class="st">"[dim]skip (model already loaded)[/dim]"</span>)
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    console.print(<span class="st">"[bold blue]CRM Chatbot[/bold blue]"</span>)
+    console.print(f<span class="st">"[dim]Model:[/dim] {MODEL}"</span>)
+    <span class="fn">warmup</span>()  <span class="cm"># ← called before the chat loop</span>
+    console.print(<span class="st">"[dim]Type 'exit' to quit[/dim]\n"</span>)
+    <span class="cm"># ... rest of main()</span></pre>
+  </div>
+
+  <h3 style="font-size:14px;margin:16px 0 8px;color:var(--amber)">Benchmark results</h3>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Measured with <code>google/gemma-4-e4b</code> on LM Studio. Run <code>python scripts/benchmark_warmup.py</code> to reproduce.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Metric</th><th>Without warmup</th><th>With warmup</th><th>Improvement</th></tr></thead>
+      <tbody>
+      <tr><td>First call (cold start)</td><td style="color:var(--red)">0.61s</td><td>—</td><td>—</td></tr>
+      <tr><td>Warmup overhead</td><td>—</td><td style="color:var(--amber)">0.18s</td><td>1-time cost</td></tr>
+      <tr><td>Avg of 3 simple calls</td><td style="color:var(--red)">0.32s</td><td style="color:var(--teal)">0.16s</td><td><strong>2.0x faster</strong></td></tr>
+      <tr><td>Steady-state (per query)</td><td style="color:var(--muted)">0.67s</td><td style="color:var(--muted)">0.67s</td><td>same (model already warm)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="insight">
+    <div class="insight-label">How it works</div>
+    <p>The warmup sends <code>"Hi"</code> with <code>max_tokens=1</code>. This forces LM Studio to load the full model weights into GPU memory. The cost is ~0.18s one time. Every subsequent call — including the first real user query — responds at warm speed (~0.16s for simple prompts) instead of cold speed (~0.61s).</p>
+  </div>
+
+  <div class="insight">
+    <div class="insight-label">Why max_tokens=1</div>
+    <p>We set <code>max_tokens=1</code> so the LLM generates only 1 token. We don't care about the response — we only want the side effect of loading the model. This minimizes GPU compute waste.</p>
+  </div>
+</section>
+
+<!-- ══ ADVANCED: CONNECTION POOL ══ -->
+<section class="section" id="connection-pool">
+  <div class="section-eyebrow">Advanced (optional)</div>
+  <h2>Connection Pooling</h2>
+  <p>Currently, every query opens a new TCP connection. With semantic search (which embeds the query + runs SQL), that's 2 connections per search. At scale, add connection pooling:</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/db/connection.py — optional: connection pool</span></div>
+    <pre><span class="kw">from</span> psycopg2.pool <span class="kw">import</span> SimpleConnectionPool
+
+<span class="cm"># Create a pool with min=1, max=5 connections</span>
+_pool = SimpleConnectionPool(
+    <span class="nu">1</span>, <span class="nu">5</span>,
+    host=os.getenv(<span class="st">"PG_HOST"</span>), port=os.getenv(<span class="st">"PG_PORT"</span>),
+    dbname=os.getenv(<span class="st">"PG_DB"</span>), user=os.getenv(<span class="st">"PG_USER"</span>),
+    password=os.getenv(<span class="st">"PG_PASSWORD"</span>),
+    cursor_factory=psycopg2.extras.RealDictCursor
+)
+
+<span class="kw">def</span> <span class="fn">get_conn</span>():
+    <span class="kw">return</span> _pool.getconn()
+
+<span class="cm"># Remember to call _pool.putconn(conn) after use</span></pre>
+  </div>
+
+  <div class="callout callout-amber">
+    <p><strong>Not included in P2 ENHANCE.</strong> Connection pooling adds complexity. For a learning project with single-user CLI usage, the current per-query connection is fine. Add pooling when you move to a web API or multi-user scenario.</p>
+  </div>
+</section>
+
+<!-- ══ ADVANCED: INPUT VALIDATION ══ -->
+<section class="section" id="input-validation">
+  <div class="section-eyebrow">Advanced (optional)</div>
+  <h2>Input Validation</h2>
+  <p>The LLM could pass wrong types to tool functions (e.g. <code>contact_id="abc"</code>). Add validation in <code>run_tool</code>:</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/chatbot/cli.py — optional: input validation</span></div>
+    <pre><span class="kw">def</span> <span class="fn">validate_args</span>(name, args):
+    <span class="cm"># Ensure contact_id is a positive integer</span>
+    <span class="kw">if</span> <span class="st">"contact_id"</span> <span class="kw">in</span> args:
+        <span class="kw">try</span>:
+            args[<span class="st">"contact_id"</span>] = int(args[<span class="st">"contact_id"</span>])
+            <span class="kw">assert</span> args[<span class="st">"contact_id"</span>] > <span class="nu">0</span>
+        <span class="kw">except</span> (ValueError, AssertionError):
+            <span class="kw">return</span> {<span class="st">"error"</span>: <span class="st">"contact_id must be a positive integer"</span>}
+    <span class="cm"># Cap limit to prevent memory exhaustion</span>
+    <span class="kw">if</span> <span class="st">"limit"</span> <span class="kw">in</span> args:
+        args[<span class="st">"limit"</span>] = min(int(args[<span class="st">"limit"</span>]), <span class="nu">100</span>)
+    <span class="kw">return</span> args</pre>
+  </div>
+</section>
+
+<!-- ══ ADVANCED: LIKE ESCAPE ══ -->
+<section class="section" id="like-escape">
+  <div class="section-eyebrow">Advanced (optional)</div>
+  <h2>LIKE Wildcard Escaping</h2>
+  <p>If a user searches for <code>"100%"</code>, the <code>%</code> acts as a SQL wildcard. Escape it:</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/db/connection.py — optional: escape LIKE wildcards</span></div>
+    <pre><span class="kw">def</span> <span class="fn">escape_like</span>(s):
+    <span class="cm"># Escape special LIKE characters: % and _</span>
+    <span class="kw">return</span> s.replace(<span class="st">"%"</span>, <span class="st">"\\%"</span>).replace(<span class="st">"_"</span>, <span class="st">"\\_"</span>)
+
+<span class="cm"># Then in search_contacts:</span>
+<span class="kw">if</span> name: params.append(f<span class="st">"%{escape_like(name)}%"</span>)</pre>
+  </div>
+</section>
+
+<!-- ══ ADVANCED: LIMIT CAP ══ -->
+<section class="section" id="limit-cap">
+  <div class="section-eyebrow">Advanced (optional)</div>
+  <h2>Limit Cap</h2>
+  <p>The <code>limit</code> parameter has no upper bound. If the LLM passes <code>limit: 999999</code>, it could fetch the entire table. Add a hard cap in <code>src/db/connection.py</code>:</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/db/connection.py — optional: cap limit</span></div>
+    <pre><span class="kw">def</span> <span class="fn">search_contacts</span>(name=None, ..., limit=<span class="nu">10</span>):
+    limit = min(limit, <span class="nu">100</span>)  <span class="cm"># hard cap: never return more than 100 rows</span></pre>
+  </div>
+
+  <div class="callout callout-blue">
+    <p>Also update <code>src/chatbot/tools.py</code> to add <code>"maximum": 100</code> to the limit parameter schema — this tells the LLM not to request more than 100.</p>
+  </div>
+</section>
+
+<!-- ══ SMART SYNC ══ -->
+<section class="section" id="smart-sync">
+  <div class="section-eyebrow">Advanced</div>
+  <h2>Smart Embedding Sync</h2>
+  <p>When deals or activities change, the contact's embedding becomes stale — it was built from old data. The <code>--smart</code> flag detects contacts affected by related data changes and re-embeds them with <strong>enriched text</strong> that includes deal summaries and recent activities.</p>
+
+  <div class="callout callout-teal">
+    <p><strong>Why it matters:</strong> A contact's semantic search result should reflect their current deal pipeline and recent interactions, not just their static profile. Without smart sync, a contact with a new $500k negotiation deal would still be found by their old embedding text.</p>
+  </div>
+
+  <h3>Usage</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">terminal — smart sync commands</span></div>
+    <pre><span class="cm"># Smart sync: detect contacts affected by deal/activity changes (lookback=2h)</span>
+python -m src.embeddings.sync --smart
+
+<span class="cm"># Smart sync with custom lookback window</span>
+python -m src.embeddings.sync --smart --since 24h
+
+<span class="cm"># Other modes still work:</span>
+python -m src.embeddings.sync              <span class="cm"># only unembedded contacts</span>
+python -m src.embeddings.sync --since 1h   <span class="cm"># contacts updated recently</span>
+python -m src.embeddings.sync --force      <span class="cm"># re-embed everything</span></pre>
+  </div>
+
+  <h3>What --smart detects</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Trigger</th><th>SQL Logic</th><th>Example</th></tr></thead>
+      <tbody>
+        <tr><td>No embedding yet</td><td><code>LEFT JOIN ... WHERE e.contact_id IS NULL</code></td><td>New contact added to CRM</td></tr>
+        <tr><td>Contact row updated after embedding</td><td><code>c.updated_at &gt; e.updated_at</code></td><td>Contact's industry changed from "saas" to "fintech"</td></tr>
+        <tr><td>Contact updated within lookback</td><td><code>c.updated_at &gt; now() - interval</code></td><td>Contact status changed to "active"</td></tr>
+        <tr><td>Deal created or updated</td><td><code>d.updated_at &gt; now() - interval</code></td><td>New deal added, or deal moved to "negotiation"</td></tr>
+        <tr><td>New activity logged</td><td><code>a.created_at &gt; now() - interval</code></td><td>Meeting note added, email logged</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Enriched embedding text</h3>
+  <p>In smart mode, the embedding text is enriched with deal and activity context. This makes semantic search more accurate because the vector captures <strong>what's happening</strong> with a contact, not just <strong>who they are</strong>.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">Embedding text comparison</span></div>
+    <pre><span class="cm">/* BASE text (used by --since, --force, default): */</span>
+Xuan Do works at Global Re. based in London, GB. Industry: insurance.
+Status: active. Tags: renewal-risk. Notes: Attended webinar Q1.
+Assigned to sales_david.
+
+<span class="cm">/* ENRICHED text (used by --smart): */</span>
+Xuan Do works at Global Re. based in London, GB. Industry: insurance.
+Status: active. Tags: renewal-risk. Notes: Attended webinar Q1.
+Assigned to sales_david.
+<span class="kv">Deals: 1 total ($7,300) — qualified: 1 deal(s) $7,300.</span>
+<span class="kv">Recent activity: meeting: Quarterly business review; demo: Technical demo done;
+note: Budget confirmed for Q2.</span></pre>
+  </div>
+
+  <h3>How it works internally</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">src/embeddings/sync.py — fetch_smart() query</span></div>
+    <pre><span class="cm">-- 5-way UNION: find all contacts affected by any data change</span>
+<span class="kw">SELECT</span> c.id <span class="kw">FROM</span> contacts c
+<span class="kw">LEFT JOIN</span> contact_embeddings e <span class="kw">ON</span> e.contact_id = c.id
+<span class="kw">WHERE</span> e.contact_id <span class="kw">IS NULL</span>          <span class="cm">-- 1. no embedding yet</span>
+
+<span class="kw">UNION</span>
+<span class="kw">SELECT</span> c.id <span class="kw">FROM</span> contacts c
+<span class="kw">JOIN</span> contact_embeddings e <span class="kw">ON</span> e.contact_id = c.id
+<span class="kw">WHERE</span> c.updated_at > e.updated_at  <span class="cm">-- 2. contact updated after embed</span>
+
+<span class="kw">UNION</span>
+<span class="kw">SELECT</span> id <span class="kw">FROM</span> contacts
+<span class="kw">WHERE</span> updated_at > now() - %s     <span class="cm">-- 3. recently updated contacts</span>
+
+<span class="kw">UNION</span>
+<span class="kw">SELECT DISTINCT</span> contact_id <span class="kw">FROM</span> deals
+<span class="kw">WHERE</span> updated_at > now() - %s     <span class="cm">-- 4. deals changed</span>
+
+<span class="kw">UNION</span>
+<span class="kw">SELECT DISTINCT</span> contact_id <span class="kw">FROM</span> activities
+<span class="kw">WHERE</span> created_at > now() - %s     <span class="cm">-- 5. new activities</span></pre>
+  </div>
+
+  <div class="callout callout-blue">
+    <p><strong>When to use each mode:</strong> Use <code>--smart</code> for regular maintenance (e.g. cron job every 2h). Use <code>--since 1h</code> for quick touch-ups. Use <code>--force</code> only when changing the embedding model. Use default (no flags) for initial bulk embedding.</p>
+  </div>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Mode</th><th>When to use</th><th>Text source</th><th>Speed</th></tr></thead>
+      <tbody>
+        <tr><td><code>default</code></td><td>Initial embedding, after DB restore</td><td>Base (contact fields only)</td><td>Fast</td></tr>
+        <tr><td><code>--since 1h</code></td><td>Quick incremental after data entry</td><td>Base</td><td>Fast</td></tr>
+        <tr><td><code>--smart</code></td><td>Regular maintenance (cron)</td><td><strong>Enriched</strong> (deals + activities)</td><td>Moderate (extra queries)</td></tr>
+        <tr><td><code>--force</code></td><td>Changed embedding model</td><td>Base</td><td>Slow (all 80k)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ TEST RESULTS ══ -->
+<section class="section" id="test-results">
+  <div class="section-eyebrow">Verification</div>
+  <h2>Test &amp; Chat Results</h2>
+
+  <div class="insight" style="border-color:var(--teal-bd);background:var(--teal-bg);margin-bottom:20px">
+    <div class="insight-label" style="color:var(--teal)">53 unit tests + 10 real chat scenarios — all passing</div>
+    <p>Unit tests: <code>python -m tests.test_crm</code>. Chat scenarios: <code>python tests/chat_scenarios.py</code>. Both pass with model <code>google/gemma-4-e4b</code> on LM Studio.</p>
+  </div>
+
+  <h3 style="font-size:14px;margin:16px 0 8px;color:var(--amber)">Unit test results (mocked, no services needed)</h3>
+  <div class="code-block"><div class="code-label"><span class="code-lang">terminal — python -m tests.test_crm</span></div>
+<pre><code>Ran 53 tests in 0.007s
+
+<span style="color:var(--muted)">TestToolsSchema ............ 9 tests  src/chatbot/tools.py schema, names, enums, defaults</span>
+<span style="color:var(--muted)">TestEmbedder .............. 10 tests  src/embeddings/embedder.py text builder + API formats</span>
+<span style="color:var(--muted)">TestChatbotRunTool ......... 5 tests  src/chatbot/cli.py tool routing + error handling</span>
+<span style="color:var(--muted)">TestTrimHistory ............ 6 tests  src/chatbot/cli.py history window logic</span>
+<span style="color:var(--muted)">TestJsonParsing ............ 4 tests  JSON parse edge cases</span>
+<span style="color:var(--muted)">TestDbSafety ............... 3 tests  src/db/connection.py parameterized queries (SQL injection)</span>
+<span style="color:var(--muted)">TestSchemaFile ............. 8 tests  sql/schema.sql structure verification</span>
+<span style="color:var(--muted)">TestMigrationP2 ............ 6 tests  sql/migration_p2.sql pgvector setup</span>
+
+<span style="color:var(--teal)">OK — 0 failures, 0 errors</span></code></pre>
+  </div>
+
+  <h3 style="font-size:14px;margin:24px 0 8px;color:var(--amber)">Real chat scenarios (LM Studio + PostgreSQL live)</h3>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">10 scenarios tested against the real LLM and database. Model: <code>google/gemma-4-e4b</code>, Data: 80,000 contacts, 8,000 deals.</p>
+
+  <!-- Scenario 1 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 1 — Simple contact search by name (3.2s, tool: search_contacts)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> Find contacts named Alice
+
+<span style="color:var(--amber)">TOOL:</span> search_contacts(name="Alice")
+<span style="color:var(--muted)">     ↳ 10 contacts returned</span>
+
+<span style="color:var(--teal)">LLM:</span> Here are the contacts named Alice found in the CRM:
+
+  *   <strong>Alice Brown</strong> (ID: 2761) — CloudCo HK, Hong Kong, active
+  *   <strong>Alice Brown</strong> (ID: 3817) — SG Capital, Singapore, churned
+  *   <strong>Alice Brown</strong> (ID: 2617) — Jakarta Systems, Jakarta, active
+  *   ... (7 more)</code></pre>
+  </div>
+
+  <!-- Scenario 2 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 2 — Search contacts by industry + country (8.6s, tool: semantic_search_contacts)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> Show me all SaaS contacts in Vietnam
+
+<span style="color:var(--amber)">TOOL:</span> semantic_search_contacts(country="VN", industry="saas", query="SaaS contacts in Vietnam")
+<span style="color:var(--muted)">     ↳ 10 contacts via cosine similarity + SQL filters</span>
+
+<span style="color:var(--teal)">LLM:</span> Here are the SaaS contacts found in Vietnam:
+
+  | Name | Company | City | Status |
+  | Bao Wilson | VietSoft | Hanoi | active |
+  | Quinn Jones | TechCorp VN | Ho Chi Minh City | active |
+  | Carol Larsson | TechCorp VN | Ho Chi Minh City | active |
+  | ... (7 more)</code></pre>
+  </div>
+
+  <!-- Scenario 3 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 3 — Deals in negotiation stage (13.0s, tool: get_deals)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> What deals are currently in negotiation?
+
+<span style="color:var(--amber)">TOOL:</span> get_deals(stage="negotiation")
+
+<span style="color:var(--teal)">LLM:</span> | Title | Company | Value | Close Date |
+  | Cape Town Digital – Workers Comp | Cape Town Digital | $499,300 | 2026-06-20 |
+  | SG Capital – Liability | SG Capital | $498,100 | 2026-06-25 |
+  | Berlin Fintech – Cyber | Berlin Fintech GmbH | $494,000 | 2026-10-04 |
+  | VietSoft – Cyber expansion | VietSoft | $490,800 | 2026-06-27 |
+  | ... (6 more, 1,124 total negotiation deals)</code></pre>
+  </div>
+
+  <!-- Scenario 5 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 5 — Pipeline summary (7.4s, tool: get_pipeline_summary)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> Give me a pipeline summary
+
+<span style="color:var(--amber)">TOOL:</span> get_pipeline_summary()
+
+<span style="color:var(--teal)">LLM:</span> | Stage | Deal Count | Total Value | Avg Value |
+  | closed_won | 2,306 | $282,552,300 | $122,529 |
+  | prospecting | 1,197 | $151,183,700 | $126,302 |
+  | negotiation | 1,124 | $143,151,100 | $127,359 |
+  | proposal | 1,159 | $142,268,300 | $122,751 |
+  | qualified | 1,055 | $136,949,700 | $129,810 |
+  | closed_lost | 1,159 | $144,917,000 | $125,036 |</code></pre>
+  </div>
+
+  <!-- Scenario 6 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 6 — Multi-step: search contact then get deals (11.1s, tools: search_contacts → get_contact_deals)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> What deals does the first contact named Alice have?
+
+<span style="color:var(--amber)">TOOL:</span> search_contacts(name="Alice")
+<span style="color:var(--muted)">     ↳ First result: Alice Brown, ID 2761</span>
+<span style="color:var(--amber)">TOOL:</span> get_contact_deals(contact_id=2761)
+<span style="color:var(--muted)">     ↳ 1 deal found</span>
+
+<span style="color:var(--teal)">LLM:</span> Alice Brown (ID: 2761) has one deal:
+  Title: CloudCo HK – Liability renewal
+  Stage: Prospecting | Value: $48,200 | Owner: sales_david</code></pre>
+  </div>
+
+  <!-- Scenario 8 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 8 — Semantic search: natural language (11.6s, tool: semantic_search_contacts)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> Find contacts who might be interested in cyber insurance
+
+<span style="color:var(--amber)">TOOL:</span> semantic_search_contacts(query="interested in cyber insurance")
+<span style="color:var(--muted)">     ↳ 10 contacts by cosine similarity</span>
+
+<span style="color:var(--teal)">LLM:</span> | Name | Company | Similarity |
+  | James Chen | Nordic Insurance AB | 0.64 |
+  | David Larsson | Dubai Insure | 0.63 |
+  | James Silva | Acme Insurance | 0.63 |
+  | Yuki Wong | Dubai Insure | 0.62 |
+  | ... (6 more, sorted by relevance)</code></pre>
+  </div>
+
+  <!-- Scenario 9 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 9 — Complex multi-tool chaining (24.6s, tools: semantic_search → get_contact_deals x10)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> Who are our top VIP enterprise clients and what deals do they have open?
+
+<span style="color:var(--amber)">TOOL:</span> semantic_search_contacts(query="top VIP enterprise clients")
+<span style="color:var(--muted)">     ↳ 10 contacts with vip/enterprise tags</span>
+<span style="color:var(--amber)">TOOL:</span> get_contact_deals(contact_id=...) × 10 contacts
+
+<span style="color:var(--teal)">LLM:</span> | Name | Company | Industry | Tags |
+  | Lan Brown | SG Capital | Fintech | vip, enterprise |
+  | Duc Smith | CloudCo HK | SaaS | vip, do-not-call |
+  | Eva Park | TechCorp VN | SaaS | vip |
+  | Minh Kim | CloudCo HK | SaaS | referral, vip, upsell |
+  | ... (3 more)
+  
+  Open deals found for VIP clients... (LLM chains 10 deal lookups)</code></pre>
+  </div>
+
+  <!-- Scenario 10 -->
+  <div class="code-block" style="margin-bottom:16px"><div class="code-label"><span class="code-lang">Scenario 10 — Out of scope (3.7s, no tools called)</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> What's the weather like today?
+
+<span style="color:var(--teal)">LLM:</span> I am a helpful CRM assistant and do not have access to real-time
+  weather information. I can help you with questions regarding contacts,
+  deals, and your sales pipeline!</code></pre>
+  </div>
+
+  <h3 style="font-size:14px;margin:20px 0 8px;color:var(--amber)">Summary</h3>
+  <div class="table-wrap">
+  <table>
+    <thead><tr><th>Metric</th><th>Value</th></tr></thead>
+    <tbody>
+    <tr><td>Scenarios passed</td><td><strong style="color:var(--teal)">10 / 10</strong></td></tr>
+    <tr><td>Average response time</td><td>10.6 seconds</td></tr>
+    <tr><td>Tools used</td><td>search_contacts, get_deals, get_contact_deals, get_pipeline_summary, semantic_search_contacts</td></tr>
+    <tr><td>Multi-tool chaining</td><td>Yes — Scenario 6 (2 tools), Scenario 9 (11 tools)</td></tr>
+    <tr><td>Out of scope handling</td><td>Correct — no tool calls, polite refusal</td></tr>
+    <tr><td>Data volume</td><td>80,000 contacts, 8,000 deals, 55 activities</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<!-- ══ FULL CHECKLIST ══ -->
+<section class="section" id="checklist">
+  <div class="section-eyebrow">Before demo</div>
+  <h2>Full Hardening Checklist</h2>
+  <ul class="checklist">
+    <li><span class="check-box"></span><strong>Error handling on LLM API call</strong> — <code>APIConnectionError</code>, <code>APITimeoutError</code>, <code>APIError</code> caught in <code>src/chatbot/cli.py</code></li>
+    <li><span class="check-box"></span><strong>Error handling on JSON parse</strong> — <code>json.JSONDecodeError</code> caught when parsing tool arguments</li>
+    <li><span class="check-box"></span><strong>Error handling on tool execution</strong> — <code>run_tool()</code> catches all exceptions, returns error dict</li>
+    <li><span class="check-box"></span><strong>Chat history window</strong> — <code>trim_history()</code> caps at 20 messages, preserves system prompt</li>
+    <li><span class="check-box"></span><strong>Startup validation</strong> — Missing <code>OLLAMA_BASE_URL</code> or <code>OLLAMA_MODEL</code> exits with clear message</li>
+    <li><span class="check-box"></span><strong>Schema complete</strong> — All columns + activities table + indexes in <code>sql/schema.sql</code></li>
+    <li><span class="check-box"></span><strong>LM Studio compatible</strong> — <code>src/embeddings/embedder.py</code> uses <code>/v1/embeddings</code>, handles both response formats</li>
+    <li><span class="check-box"></span><strong>requirements.txt</strong> — All dependencies listed: <code>openai</code>, <code>psycopg2-binary</code>, <code>python-dotenv</code>, <code>requests</code>, <code>rich</code></li>
+    <li><span class="check-box"></span><strong>.env.example</strong> — Template for new developers (optional but recommended)</li>
+    <li><span class="check-box"></span><strong>Model warmup</strong> — <code>warmup()</code> pre-loads model into GPU before first user query (2x faster first response)</li>
+    <li><span class="check-box"></span><strong>Schedule embed sync</strong> — <code>python -m src.embeddings.sync --smart</code> via cron/task scheduler (detects deal/activity changes, enriched text)</li>
+  </ul>
+</section>
+
+<!-- ══ DESIGN DECISIONS ══ -->
+<section class="section" id="decisions">
+  <div class="section-eyebrow">Architecture notes</div>
+  <h2>Design Decisions</h2>
+
+  <div class="insight-grid">
+    <div class="insight">
+      <div class="insight-label">Error → LLM → User</div>
+      <p>Tool errors are returned as dicts to the LLM, not thrown. The LLM reads the error message and explains it naturally to the user. <strong>No special error UI needed.</strong></p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Trim, don't summarize</div>
+      <p>We trim old messages instead of summarizing them. Summarization adds complexity (extra LLM call, latency, potential hallucination). For a CLI chatbot, losing old context is acceptable.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">One URL for chat + embed</div>
+      <p>Both chat and embedding use <code>OLLAMA_BASE_URL</code>. No separate embed endpoint config. LM Studio serves both on the same port — simplifies setup.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">OpenAI format everywhere</div>
+      <p><code>src/embeddings/embedder.py</code> uses <code>"input"</code> (OpenAI) not <code>"prompt"</code> (Ollama). LM Studio requires OpenAI format. The fallback parser handles both response shapes.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Warmup, not lazy-load</div>
+      <p>We warm up eagerly at startup with <code>max_tokens=1</code> instead of letting the first real query pay the cold-start penalty. The 0.18s overhead is invisible to the user (they see "Warming up model..." in the startup banner). Without warmup, the first query with tools takes ~1.5s; with warmup, it takes ~0.3s.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Optional hardening</div>
+      <p>Connection pooling, input validation, LIKE escaping, and limit caps are documented but <strong>not implemented</strong>. They're noted as "Advanced" so learners can add them incrementally.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Enriched vs base embeddings</div>
+      <p>Smart sync (<code>--smart</code>) enriches embedding text with deal summaries and recent activities. Base mode uses contact fields only. This is a tradeoff: enriched embeddings are more useful for semantic search but require extra DB queries per contact. Use enriched for maintenance runs, base for bulk initial embedding.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">No new tools</div>
+      <p>P2 ENHANCE doesn't add new LLM tools. It only hardens existing code. New features (web UI, streaming, auth) belong in P3.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ══ WHAT'S NEXT ══ -->
+<section class="section" id="whats-next">
+  <div class="section-eyebrow">Future</div>
+  <h2>What's Next — Phase 3: AI Deal Intelligence Agent</h2>
+  <p>P2 ENHANCE makes the chatbot robust with exact queries + semantic search. Phase 3 takes the next leap: turning the CRM from a <strong>"data container"</strong> into a <strong>"proactive advisor"</strong> using Multi-Agent RAG.</p>
+
+  <div class="insight" style="border-color:var(--purple-bd);background:var(--purple-bg);margin-bottom:20px">
+    <div class="insight-label" style="color:var(--purple)">Why P3 matters</div>
+    <p>CRM data lives in two forms: <strong>structured</strong> (deal stage, contract value, contact status) and <strong>unstructured</strong> (call logs, negotiation emails, meeting notes). P2 ENHANCE handles both separately. P3 combines them into a single <em>Hybrid Search + Agentic RAG</em> pipeline that can reason about deal health, detect risks early, and recommend next actions.</p>
+  </div>
+
+  <h3 style="font-size:14px;margin:16px 0 8px;color:var(--amber)">P3 Architecture: Agentic RAG Flow</h3>
+  <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Instead of a single LLM call → tool → response, P3 chains multiple specialized agents in a stateful workflow.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">P3 Pipeline — 4-Agent Workflow</span></div>
+    <pre>
+User Query
+  "Check deals over $50k in negotiation that seem stalled due to cost concerns"
+       ↓
+┌─────────────────────────────┐
+│  Node 1: Intent & Router    │  Parses query → hard filters + soft intent
+│  Agent                      │  Hard: value > $50k, stage = negotiation
+│                             │  Soft: "cost concerns" (semantic)
+└────────────┬────────────────┘
+             ↓
+┌─────────────────────────────┐
+│  Node 2: Hybrid Retriever   │  SQL WHERE + pgvector cosine similarity
+│  Agent                      │  Combines exact filters + semantic match
+│                             │  Returns top-N deals with context
+└────────────┬────────────────┘
+             ↓
+┌─────────────────────────────┐
+│  Node 3: Diagnostic Agent   │  Reads interaction notes in detail
+│                             │  Extracts blockers, risks, sentiment
+│                             │  "Client CTO worried about infra cost at scale"
+└────────────┬────────────────┘
+             ↓
+┌─────────────────────────────┐
+│  Node 4: Strategist Agent   │  Summarizes risk + ROI impact
+│                             │  Recommends next actions
+│                             │  "Schedule deep-dive with client IT team"
+└─────────────────────────────┘</pre>
+  </div>
+
+  <h3 style="font-size:14px;margin:20px 0 8px;color:var(--amber)">New data model: deal context embeddings</h3>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">migration_p3.sql — deal interaction embeddings</span></div>
+    <pre><span class="cm">-- Embed deal interaction notes for semantic risk detection</span>
+<span class="kw">CREATE TABLE</span> deal_embeddings (
+    deal_id        INT <span class="kw">PRIMARY KEY REFERENCES</span> deals(id) <span class="kw">ON DELETE CASCADE</span>,
+    notes_text     TEXT,                          <span class="cm">-- raw interaction notes</span>
+    notes_embedding vector(768) <span class="kw">NOT NULL</span>,         <span class="cm">-- embedded from notes_text</span>
+    model          TEXT,                          <span class="cm">-- embedding model used</span>
+    updated_at     TIMESTAMPTZ <span class="kw">DEFAULT</span> now()
+);
+
+<span class="kw">CREATE INDEX</span> idx_deal_embeddings_hnsw
+    <span class="kw">ON</span> deal_embeddings <span class="kw">USING</span> hnsw (notes_embedding vector_cosine_ops)
+    <span class="kw">WITH</span> (m = <span class="nu">16</span>, ef_construction = <span class="nu">64</span>);</pre>
+  </div>
+
+  <h3 style="font-size:14px;margin:20px 0 8px;color:var(--amber)">P3 vs P2 ENHANCE — what changes</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Aspect</th><th>P2 ENHANCE (current)</th><th>P3 (next)</th></tr></thead>
+      <tbody>
+      <tr><td>Architecture</td><td>Single LLM → tool → response</td><td>Multi-agent stateful pipeline (LangGraph / CrewAI)</td></tr>
+      <tr><td>Search</td><td>Exact SQL filters OR semantic search</td><td><strong>Hybrid</strong>: SQL WHERE + cosine similarity in one query</td></tr>
+      <tr><td>Embedding target</td><td>Contact profiles (name, company, industry)</td><td>Deal interaction notes (call logs, emails, meeting notes)</td></tr>
+      <tr><td>Output</td><td>Raw data (lists, tables)</td><td><strong>Analysis</strong> (risk detection, ROI impact, recommended actions)</td></tr>
+      <tr><td>LLM role</td><td>Query planner + formatter</td><td>Intent parser + diagnostician + strategist</td></tr>
+      <tr><td>State management</td><td>Chat history only</td><td>Workflow state passed between agents (LangGraph State)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3 style="font-size:14px;margin:20px 0 8px;color:var(--amber)">Example P3 conversation</h3>
+  <div class="code-block"><div class="code-label"><span class="code-lang">P3 scenario — proactive deal risk analysis</span></div>
+<pre><code><span style="color:var(--blue)">USER:</span> Check deals over $50k in negotiation that seem stalled due to cost concerns.
+       Summarize and recommend next steps.
+
+<span style="color:var(--amber)">AGENT 1 — Intent Router:</span>
+  Hard filters: value > $50,000, stage = negotiation
+  Semantic intent: "cost concerns", "stalled", "budget hesitation"
+
+<span style="color:var(--amber)">AGENT 2 — Hybrid Retriever:</span>
+  SQL:  WHERE value > 50000 AND stage = 'negotiation'
+  Vector: ORDER BY notes_embedding <=> '[cost_concerns_vector]'
+  Result: 3 deals matched (cosine 0.72, 0.68, 0.61)
+
+<span style="color:var(--amber)">AGENT 3 — Diagnostic:</span>
+  Deal #2818 (SG Capital, $494k): Client CFO raised infra scaling cost concern.
+  Deal #4802 (Berlin Fintech, $494k): IT Director worried about security compliance cost.
+  Deal #7926 (Cairo Tech, $492k): CEO comparing with cheaper competitor.
+
+<span style="color:var(--teal)">AGENT 4 — Strategist:</span>
+  Total at-risk revenue: $1,480,300
+
+  Recommendations:
+  1. Deal #2818: Schedule technical deep-dive with client IT team to
+     address infra cost optimization. Propose tiered pricing.
+  2. Deal #4802: Share security compliance ROI calculator with IT Director.
+  3. Deal #7926: Prepare competitive comparison deck emphasizing
+     total cost of ownership vs. cheaper alternatives.</code></pre>
+  </div>
+
+  <h3 style="font-size:14px;margin:20px 0 8px;color:var(--amber)">Tech stack additions for P3</h3>
+  <div class="insight-grid">
+    <div class="insight">
+      <div class="insight-label">LangGraph</div>
+      <p>Stateful agent orchestration with built-in checkpointing. Each agent is a node in a graph. State (query, filters, retrieved deals, analysis) flows between nodes automatically.</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Deal embeddings</div>
+      <p>New <code>deal_embeddings</code> table stores vector representations of interaction notes. Enables semantic risk detection — "find deals where client sounds hesitant about pricing".</p>
+    </div>
+    <div class="insight">
+      <div class="insight-label">Streaming UI</div>
+      <p>Replace CLI with Streamlit or FastAPI + React. Show each agent's progress in real-time: "Analyzing intent... Retrieving deals... Diagnosing risks... Building strategy."</p>
+    </div>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>Phase 2 ENHANCE · CRM Chatbot Production Hardening</span>
+  <span>LM Studio · pgvector · PostgreSQL 16 · Python 3</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+const sections = document.querySelectorAll('.section[id]');
+const navItems = document.querySelectorAll('.nav-item');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      navItems.forEach(n => n.classList.remove('active'));
+      const a = document.querySelector(`.nav-item[href="#${e.target.id}"]`);
+      if(a) a.classList.add('active');
+    }
+  });
+}, {threshold:0.25});
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

@@ -1,0 +1,964 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Phase 1 — CRM Chatbot: Tool Calling</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root{
+  --bg:#0d1117;--bg2:#161b22;--bg3:#1c2330;--bg4:#21262d;
+  --border:#30363d;--border2:#21262d;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+  --blue:#58a6ff;--blue-bg:#0d1f35;--blue-bd:#1d3f6a;
+  --teal:#3fb950;--teal-bg:#0d1f1a;--teal-bd:#1a4a2e;
+  --amber:#d29922;--amber-bg:#271d00;--amber-bd:#4a3800;
+  --purple:#bc8cff;--purple-bg:#1e1535;--purple-bd:#4a2d8e;
+  --red:#f85149;--red-bg:#2d1010;--red-bd:#6a2020;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Outfit',sans-serif;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:15px;line-height:1.7}
+a{color:var(--blue);text-decoration:none}
+
+/* ── Page layout ── */
+.layout{display:flex;min-height:100vh}
+.sidebar{width:240px;flex-shrink:0;background:var(--bg2);border-right:1px solid var(--border);position:sticky;top:0;height:100vh;overflow-y:auto;padding:24px 0}
+.main{flex:1;min-width:0;padding:48px 56px 80px;max-width:900px}
+@media(max-width:900px){.sidebar{display:none}.main{padding:32px 24px 60px}}
+
+/* ── Sidebar nav ── */
+.nav-header{padding:0 20px 16px;border-bottom:1px solid var(--border);margin-bottom:16px}
+.nav-phase{font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:.12em;text-transform:uppercase;margin-bottom:4px}
+.nav-title{font-size:13px;font-weight:500;color:var(--text)}
+.nav-item{display:block;padding:6px 20px;font-size:13px;color:var(--muted);text-decoration:none;border-left:2px solid transparent;transition:all .15s}
+.nav-item:hover,.nav-item.active{color:var(--text);border-left-color:var(--blue);background:rgba(88,166,255,.05)}
+.nav-group{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.1em;text-transform:uppercase;padding:14px 20px 4px}
+
+/* ── Header ── */
+.page-header{margin-bottom:48px;padding-bottom:32px;border-bottom:1px solid var(--border)}
+.eyebrow{font-family:var(--mono);font-size:10px;color:var(--teal);letter-spacing:.14em;text-transform:uppercase;margin-bottom:12px}
+.page-header h1{font-size:30px;font-weight:600;line-height:1.2;margin-bottom:10px}
+.page-header .subtitle{color:var(--muted);font-size:14px;max-width:580px;margin-bottom:18px}
+.badge-row{display:flex;gap:7px;flex-wrap:wrap}
+.badge{font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid}
+.badge-blue{background:var(--blue-bg);color:var(--blue);border-color:var(--blue-bd)}
+.badge-teal{background:var(--teal-bg);color:var(--teal);border-color:var(--teal-bd)}
+.badge-amber{background:var(--amber-bg);color:var(--amber);border-color:var(--amber-bd)}
+.badge-purple{background:var(--purple-bg);color:var(--purple);border-color:var(--purple-bd)}
+
+/* ── Sections ── */
+.section{margin-bottom:52px;scroll-margin-top:24px}
+.section-eyebrow{font-family:var(--mono);font-size:10px;color:var(--faint);letter-spacing:.14em;text-transform:uppercase;margin-bottom:6px}
+.section h2{font-size:20px;font-weight:600;color:var(--text);margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--border)}
+.section h3{font-size:15px;font-weight:600;color:var(--text);margin:24px 0 10px}
+.section h4{font-family:var(--mono);font-size:12px;color:var(--muted);margin:18px 0 8px;text-transform:uppercase;letter-spacing:.08em}
+.section p{color:#c9d1d9;margin-bottom:12px;font-size:14px}
+.section ul{padding-left:20px;margin-bottom:12px}
+.section li{color:#c9d1d9;font-size:14px;margin-bottom:4px}
+
+/* ── Code blocks ── */
+.code-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.code-label{display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:var(--bg3);border-bottom:1px solid var(--border)}
+.code-lang{font-family:var(--mono);font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.code-copy{font-family:var(--mono);font-size:10px;color:var(--faint);cursor:pointer;background:none;border:none;padding:0;transition:color .15s}
+.code-copy:hover{color:var(--blue)}
+pre{margin:0;padding:16px;overflow-x:auto;font-family:var(--mono);font-size:12px;line-height:1.65;color:#e6edf3}
+.kw{color:#ff7b72}
+.fn{color:#d2a8ff}
+.st{color:#a5d6ff}
+.cm{color:#8b949e}
+.nu{color:#79c0ff}
+.kv{color:#7ee787}
+
+/* ── Inline code ── */
+code{font-family:var(--mono);font-size:12px;background:var(--bg3);border:1px solid var(--border);padding:1px 6px;border-radius:4px;color:var(--purple)}
+
+/* ── Tables ── */
+.table-wrap{overflow-x:auto;margin-bottom:16px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead tr{border-bottom:1px solid var(--border)}
+th{padding:9px 14px;text-align:left;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+tbody tr{border-bottom:1px solid var(--border2)}
+tbody tr:last-child{border-bottom:none}
+td{padding:9px 14px;color:var(--muted);font-size:13px}
+td:first-child{color:var(--text);font-weight:500}
+.highlight-col{background:var(--blue-bg)}
+
+/* ── Callouts ── */
+.callout{border-radius:8px;padding:14px 16px;margin-bottom:14px;font-size:13px;line-height:1.6;border-left:3px solid}
+.callout-blue{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.callout-teal{background:var(--teal-bg);border-color:var(--teal);color:var(--teal)}
+.callout-amber{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.callout p{color:inherit;margin:0;font-size:13px}
+.callout strong{color:var(--text)}
+
+/* ── Step cards ── */
+.step-card{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:22px 24px;margin-bottom:14px}
+.step-num{font-family:var(--mono);font-size:10px;color:var(--blue);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px}
+.step-card h3{font-size:15px;font-weight:600;color:var(--text);margin:0 0 10px}
+.step-card p{font-size:13px;color:var(--muted);margin-bottom:0}
+
+/* ── File tree ── */
+.tree{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;color:var(--muted);line-height:2;margin-bottom:16px}
+.tree .file{color:var(--text)}
+.tree .comment{color:var(--faint)}
+
+/* ── Conversation demo ── */
+.convo{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:14px}
+.convo-turn{margin-bottom:14px}
+.convo-turn:last-child{margin-bottom:0}
+.convo-you{font-family:var(--mono);font-size:12px;color:var(--blue);margin-bottom:4px}
+.convo-tool{font-family:var(--mono);font-size:11px;color:var(--faint);margin:4px 0;padding-left:14px}
+.convo-result{font-family:var(--mono);font-size:11px;color:var(--teal);padding-left:14px;line-height:1.8}
+.convo-divider{border:none;border-top:1px solid var(--border2);margin:14px 0}
+
+/* ── Checklist ── */
+.checklist{list-style:none;padding:0;margin-bottom:16px}
+.checklist li{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--border2);font-size:13px;color:#c9d1d9}
+.checklist li:last-child{border-bottom:none}
+.check-box{width:16px;height:16px;border:1px solid var(--border);border-radius:3px;flex-shrink:0;margin-top:2px}
+
+/* ── Model table ── */
+.model-recommended td:nth-child(1){color:var(--blue)}
+
+/* ── Diagram ── */
+.diagram-wrap{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:24px;margin-bottom:14px;overflow-x:auto}
+.diagram-caption{font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--border);line-height:1.6}
+
+/* ── P2 teaser ── */
+.p2-teaser{background:var(--teal-bg);border:1px solid var(--teal-bd);border-radius:10px;padding:22px 24px}
+.p2-teaser h3{font-size:15px;font-weight:600;color:var(--teal);margin-bottom:10px}
+.p2-teaser ul{padding-left:18px}
+.p2-teaser li{color:#c9d1d9;font-size:13px;margin-bottom:5px}
+
+/* ── Footer ── */
+.footer{margin-top:64px;padding-top:22px;border-top:1px solid var(--border);display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px}
+.footer span{font-family:var(--mono);font-size:11px;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="layout">
+
+<!-- ══ SIDEBAR ══ -->
+<nav class="sidebar" aria-label="Page navigation">
+  <div class="nav-header">
+    <div class="nav-phase">Phase 1</div>
+    <div class="nav-title">Tool Calling Guide</div>
+  </div>
+  <div class="nav-group">Overview</div>
+  <a class="nav-item" href="#overview">Architecture</a>
+  <a class="nav-item" href="#conversations">Conversations</a>
+  <a class="nav-item" href="#structure">Project structure</a>
+  <div class="nav-group">Setup Steps</div>
+  <a class="nav-item" href="#step1">1 — Ollama model</a>
+  <a class="nav-item" href="#step2">2 — PostgreSQL Docker</a>
+  <a class="nav-item" href="#step3">3 — Schema &amp; seed</a>
+  <a class="nav-item" href="#step4">4 — Python env</a>
+  <a class="nav-item" href="#step5">5 — Tool layer</a>
+  <a class="nav-item" href="#step6">6 — Run &amp; verify</a>
+  <div class="nav-group">Finish</div>
+  <a class="nav-item" href="#hardening">Hardening checklist</a>
+  <a class="nav-item" href="#p2">What's next — P2</a>
+</nav>
+
+<!-- ══ MAIN ══ -->
+<main class="main">
+
+<!-- Header -->
+<header class="page-header">
+  <div class="eyebrow">Phase 1 · End-to-End Guide</div>
+  <h1>CRM Chatbot<br>Tool Calling</h1>
+  <p class="subtitle">A chatbot that answers natural language questions about your CRM contacts and deals by calling structured, parameterised database tools — no raw SQL generation, no schema exposure.</p>
+  <div class="badge-row">
+    <span class="badge badge-blue">Ollama · local CPU</span>
+    <span class="badge badge-teal">PostgreSQL · Docker</span>
+    <span class="badge badge-purple">qwen2.5:7b</span>
+    <span class="badge badge-amber">Python</span>
+  </div>
+</header>
+
+<!-- ══ ARCHITECTURE ══ -->
+<section class="section" id="overview">
+  <div class="section-eyebrow">Overview</div>
+  <h2>Architecture</h2>
+
+  <div class="diagram-wrap">
+    <svg width="100%" viewBox="0 0 700 480" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <marker id="a" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#58a6ff" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="ag" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#3fb950" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+        <marker id="am" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+          <path d="M2 1L8 5L2 9" fill="none" stroke="#30363d" stroke-width="1.5" stroke-linecap="round"/>
+        </marker>
+      </defs>
+      <!-- User -->
+      <rect x="220" y="16" width="260" height="46" rx="7" fill="#161b22" stroke="#30363d" stroke-width="1"/>
+      <text x="350" y="36" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-family="Outfit,sans-serif" font-size="13" font-weight="500">Chatbot UI / API</text>
+      <text x="350" y="52" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="Outfit,sans-serif" font-size="11">user query entry point</text>
+      <line x1="350" y1="62" x2="350" y2="98" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)" fill="none"/>
+      <!-- LLM -->
+      <rect x="190" y="98" width="320" height="54" rx="7" fill="#1e1535" stroke="#4a2d8e" stroke-width="1"/>
+      <text x="350" y="118" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-family="Outfit,sans-serif" font-size="13" font-weight="500">LLM Orchestrator</text>
+      <text x="350" y="138" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="Outfit,sans-serif" font-size="11">qwen2.5:7b via Ollama · OpenAI-compatible API</text>
+      <line x1="350" y1="152" x2="350" y2="188" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)" fill="none"/>
+      <!-- Router -->
+      <rect x="190" y="188" width="320" height="54" rx="7" fill="#0d1f35" stroke="#1d3f6a" stroke-width="1"/>
+      <text x="350" y="208" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-family="Outfit,sans-serif" font-size="13" font-weight="500">Tool Router</text>
+      <text x="350" y="228" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="Outfit,sans-serif" font-size="11">structured intent → parameterised tools</text>
+      <!-- branch left: tools -->
+      <path d="M 270 242 L 160 284" fill="none" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+      <!-- branch right: P2 dashed -->
+      <path d="M 430 242 L 530 284" fill="none" stroke="#30363d" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#am)"/>
+      <!-- Tools box -->
+      <rect x="50" y="284" width="220" height="70" rx="7" fill="#0d1f35" stroke="#1d3f6a" stroke-width="1"/>
+      <text x="160" y="306" text-anchor="middle" dominant-baseline="central" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="11" font-weight="500">Tool Calls (P1)</text>
+      <text x="160" y="324" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="JetBrains Mono,monospace" font-size="10">search_contacts · get_deals</text>
+      <text x="160" y="342" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="JetBrains Mono,monospace" font-size="10">get_contact_deals · get_pipeline_summary</text>
+      <!-- P2 stub -->
+      <rect x="430" y="284" width="190" height="70" rx="7" fill="#161b22" stroke="#30363d" stroke-width="1" stroke-dasharray="4 3"/>
+      <text x="525" y="316" text-anchor="middle" dominant-baseline="central" fill="#484f58" font-family="JetBrains Mono,monospace" font-size="10">Vector search (P2)</text>
+      <text x="525" y="334" text-anchor="middle" dominant-baseline="central" fill="#484f58" font-family="JetBrains Mono,monospace" font-size="10">pgvector ANN</text>
+      <!-- arrow to postgres -->
+      <path d="M 160 354 L 160 400 L 270 408" fill="none" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)"/>
+      <!-- Postgres -->
+      <rect x="220" y="394" width="260" height="54" rx="7" fill="#271d00" stroke="#4a3800" stroke-width="1"/>
+      <text x="350" y="414" text-anchor="middle" dominant-baseline="central" fill="#e6edf3" font-family="Outfit,sans-serif" font-size="13" font-weight="500">PostgreSQL (CRM DB)</text>
+      <text x="350" y="434" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="Outfit,sans-serif" font-size="11">contacts · deals · activities</text>
+      <!-- arrow to response -->
+      <line x1="350" y1="448" x2="350" y2="462" stroke="#58a6ff" stroke-width="1.5" marker-end="url(#a)" fill="none"/>
+      <text x="350" y="476" text-anchor="middle" dominant-baseline="central" fill="#8b949e" font-family="Outfit,sans-serif" font-size="11">Response to user</text>
+      <!-- labels -->
+      <text x="195" y="272" text-anchor="middle" fill="#58a6ff" font-family="JetBrains Mono,monospace" font-size="10">structured</text>
+      <text x="497" y="272" text-anchor="middle" fill="#484f58" font-family="JetBrains Mono,monospace" font-size="10">P2 only</text>
+    </svg>
+    <div class="diagram-caption">Blue = P1 live path. Dashed grey = P2 vector path (added in Phase 2, same Postgres instance).</div>
+  </div>
+
+  <h3>Why tool calling (not NL2SQL)?</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Concern</th><th>NL2SQL</th><th>Tool Calling</th></tr></thead>
+      <tbody>
+        <tr><td>SQL injection risk</td><td>Higher — LLM writes raw SQL</td><td>None — parameterised only</td></tr>
+        <tr><td>Schema exposure</td><td>Full schema in prompt</td><td>Hidden behind function signatures</td></tr>
+        <tr><td>Query accuracy</td><td>Medium</td><td>High — explicit parameter types</td></tr>
+        <tr><td>Setup effort</td><td>Low</td><td>Low–Medium</td></tr>
+        <tr><td>Run local</td><td>Yes</td><td>Yes</td></tr>
+        <tr><td>Token cost/query</td><td>Low</td><td>Low–Medium</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ══ CONVERSATIONS ══ -->
+<section class="section" id="conversations">
+  <div class="section-eyebrow">Demo</div>
+  <h2>Conversation Examples</h2>
+  <p>Once running, the chatbot handles queries like these. The dim lines show which tool is called and with what arguments.</p>
+
+  <div class="convo">
+    <div class="convo-turn">
+      <div class="convo-you">You: Show me all contacts in Vietnam</div>
+      <div class="convo-tool">→ calling search_contacts({'country': 'VN'})</div>
+      <div class="convo-result">Name          | Company         | City             | Status
+David Tran    | VietSoft         | Hanoi            | active
+James Hoang   | HCM Dev Studio   | Ho Chi Minh City | active
+Minh Nguyen   | TechCorp VN      | Ho Chi Minh City | lead</div>
+    </div>
+    <hr class="convo-divider"/>
+    <div class="convo-turn">
+      <div class="convo-you">You: What deals are closing this month?</div>
+      <div class="convo-tool">→ calling get_deals({'closing_before': '2026-06-30', 'closing_after': '2026-06-01'})</div>
+      <div class="convo-result">3 deals closing this month:
+- NY Ventures enterprise deal — $320,000  (negotiation, sales_bob)
+- Global Insurance workers comp — $200,000  (negotiation, sales_bob)
+- SP Tech regional rollout — $78,000  (qualified, sales_alice)</div>
+    </div>
+    <hr class="convo-divider"/>
+    <div class="convo-turn">
+      <div class="convo-you">You: Find Alice Nguyen</div>
+      <div class="convo-tool">→ calling search_contacts({'name': 'Alice Nguyen'})</div>
+      <div class="convo-result">Found: Alice Nguyen · TechCorp VN · Ho Chi Minh City · active</div>
+    </div>
+    <div class="convo-turn" style="margin-top:10px">
+      <div class="convo-you">You: What deals does she have?</div>
+      <div class="convo-tool">→ calling get_contact_deals({'contact_id': 1})</div>
+      <div class="convo-result">Alice has 2 deals:
+1. Enterprise licence – TechCorp VN   $85,000  proposal
+2. Support contract renewal            $12,000  closed_won</div>
+    </div>
+    <hr class="convo-divider"/>
+    <div class="convo-turn">
+      <div class="convo-you">You: Give me a pipeline summary</div>
+      <div class="convo-tool">→ calling get_pipeline_summary()</div>
+      <div class="convo-result">Stage        | Deals | Total Value  | Avg Value
+closed_won   |   6   | $1,234,500   | $205,750
+negotiation  |   5   | $987,200     | $197,440
+proposal     |   6   | $654,100     | $109,017
+qualified    |   5   | $432,000     | $86,400
+prospecting  |   5   | $198,500     | $39,700
+closed_lost  |   3   | $245,000     | $81,667</div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ STRUCTURE ══ -->
+<section class="section" id="structure">
+  <div class="section-eyebrow">Overview</div>
+  <h2>Project Structure</h2>
+  <div class="tree">
+crm-chatbot/<br>
+├── <span class="file">docker-compose.yml</span>  <span class="comment">← PostgreSQL container</span><br>
+├── <span class="file">schema.sql</span>           <span class="comment">← Table definitions + indexes</span><br>
+├── <span class="file">generate_seed.py</span>     <span class="comment">← Python seed data generator</span><br>
+├── <span class="file">seed.sql</span>             <span class="comment">← Generated — run after generate_seed.py</span><br>
+├── <span class="file">.env</span>                 <span class="comment">← DB + Ollama connection config</span><br>
+├── <span class="file">db.py</span>                <span class="comment">← DB connection + parameterised query helpers</span><br>
+├── <span class="file">tools.py</span>             <span class="comment">← JSON schema tool definitions for the LLM</span><br>
+├── <span class="file">chatbot.py</span>           <span class="comment">← Main chat loop</span><br>
+└── <span class="file">.venv/</span>               <span class="comment">← Python virtual environment</span>
+  </div>
+</section>
+
+<!-- ══ STEP 1 ══ -->
+<section class="section" id="step1">
+  <div class="section-eyebrow">Step 1 of 6</div>
+  <h2>Pull the Ollama Model</h2>
+  <p>For a CPU-only machine, <code>qwen2.5:7b</code> is the recommended model — native tool/function-calling support, fits in ~8 GB RAM, runs at ~8–15 tokens/sec on a modern i7/Ryzen.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre><span class="cm"># Check what's already pulled</span>
+ollama list
+
+<span class="cm"># Pull the recommended model (one-time, ~4.7 GB download)</span>
+ollama pull qwen2.5:7b
+
+<span class="cm"># Verify it loaded correctly</span>
+ollama run qwen2.5:7b <span class="st">"say hello"</span>
+<span class="cm"># Exit with /bye</span></pre>
+  </div>
+
+  <h3>Model comparison for CPU-only</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Model</th><th>RAM needed</th><th>Tool calling</th><th>Speed (CPU)</th></tr></thead>
+      <tbody>
+        <tr><td><code>qwen2.5:3b</code></td><td>~4 GB</td><td>Good</td><td>Fast</td></tr>
+        <tr class="model-recommended"><td><code>qwen2.5:7b</code> ✓</td><td>~8 GB</td><td>Excellent</td><td>Medium</td></tr>
+        <tr><td><code>qwen2.5:14b</code></td><td>~16 GB</td><td>Excellent</td><td>Slow</td></tr>
+        <tr><td><code>mistral-nemo:12b</code></td><td>~16 GB</td><td>Good</td><td>Slow</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-blue">
+    <p>Ollama serves on <code>http://localhost:11434</code> and exposes an OpenAI-compatible <code>/v1/chat/completions</code> endpoint. The Python <code>openai</code> SDK points directly at this — no code changes needed to later swap to GPT-4o.</p>
+  </div>
+</section>
+
+<!-- ══ STEP 2 ══ -->
+<section class="section" id="step2">
+  <div class="section-eyebrow">Step 2 of 6</div>
+  <h2>Run PostgreSQL in Docker</h2>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">docker-compose.yml</span></div>
+    <pre><span class="kv">version</span>: <span class="st">"3.9"</span>
+<span class="kv">services</span>:
+  <span class="kv">postgres</span>:
+    <span class="kv">image</span>: postgres:16-alpine
+    <span class="kv">container_name</span>: crm_pg
+    <span class="kv">restart</span>: unless-stopped
+    <span class="kv">environment</span>:
+      <span class="kv">POSTGRES_USER</span>: crm
+      <span class="kv">POSTGRES_PASSWORD</span>: crm_local_pw
+      <span class="kv">POSTGRES_DB</span>: crm
+    <span class="kv">ports</span>:
+      - <span class="st">"5432:5432"</span>
+    <span class="kv">volumes</span>:
+      - crm_pgdata:/var/lib/postgresql/data
+
+<span class="kv">volumes</span>:
+  <span class="kv">crm_pgdata</span>:</pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre><span class="cm"># Create project folder</span>
+mkdir crm-chatbot <span class="kw">&amp;&amp;</span> <span class="fn">cd</span> crm-chatbot
+
+<span class="cm"># Start Postgres (detached)</span>
+docker compose up -d
+
+<span class="cm"># Verify it's running</span>
+docker ps | grep crm_pg
+
+<span class="cm"># Connect with psql to confirm</span>
+docker exec -it crm_pg psql -U crm -d crm -c <span class="st">"SELECT version();"</span></pre>
+  </div>
+
+  <div class="callout callout-amber">
+    <p>The <code>crm_pgdata</code> volume persists data across restarts. To wipe and start fresh: <code>docker compose down -v</code></p>
+  </div>
+</section>
+
+<!-- ══ STEP 3 ══ -->
+<section class="section" id="step3">
+  <div class="section-eyebrow">Step 3 of 6</div>
+  <h2>Create Schema and Seed Data</h2>
+
+  <h3>3a. Enable Extensions</h3>
+  <p>Run this before the schema. <code>pg_trgm</code> enables fast <code>ILIKE '%partial%'</code> via GIN index — essential for the <code>search_contacts</code> tool. <code>unaccent</code> lets ILIKE match <code>Nguyen</code> against <code>Nguyên</code>.</p>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre>docker exec -it crm_pg psql -U crm -d crm -c <span class="st">"
+  CREATE EXTENSION IF NOT EXISTS pg_trgm;
+  CREATE EXTENSION IF NOT EXISTS unaccent;
+"</span>
+
+<span class="cm"># Verify</span>
+docker exec -it crm_pg psql -U crm -d crm -c <span class="st">"
+  SELECT name, default_version, installed_version
+  FROM pg_available_extensions
+  WHERE name IN ('pg_trgm','unaccent');
+"</span></pre>
+  </div>
+
+  <h3>3b. Schema</h3>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">schema.sql</span></div>
+    <pre><span class="cm">-- contacts: 78k in production, ~50 in local seed</span>
+<span class="kw">CREATE TABLE</span> contacts (
+    id            <span class="kv">SERIAL PRIMARY KEY</span>,
+    name          <span class="kv">TEXT NOT NULL</span>,
+    email         <span class="kv">TEXT UNIQUE NOT NULL</span>,
+    company       TEXT,
+    phone         TEXT,
+    city          TEXT,
+    country       TEXT,
+    industry      TEXT,  <span class="cm">-- insurance | fintech | saas | manufacturing | retail</span>
+    status        TEXT <span class="kv">NOT NULL DEFAULT</span> <span class="st">'active'</span>
+                  <span class="kw">CHECK</span> (status <span class="kw">IN</span> (<span class="st">'active'</span>,<span class="st">'inactive'</span>,<span class="st">'lead'</span>,<span class="st">'churned'</span>)),
+    source        TEXT,
+    assigned_to   TEXT,
+    tags          <span class="kv">TEXT[]</span>,  <span class="cm">-- e.g. ARRAY['vip','renewal-risk']</span>
+    notes         TEXT,
+    created_at    <span class="kv">TIMESTAMPTZ NOT NULL DEFAULT</span> now(),
+    updated_at    <span class="kv">TIMESTAMPTZ NOT NULL DEFAULT</span> now()
+);
+
+<span class="kw">CREATE TABLE</span> deals (
+    id            <span class="kv">SERIAL PRIMARY KEY</span>,
+    contact_id    INT <span class="kv">NOT NULL REFERENCES</span> contacts(id) <span class="kw">ON DELETE CASCADE</span>,
+    title         <span class="kv">TEXT NOT NULL</span>,
+    value         <span class="kv">NUMERIC(14,2) NOT NULL CHECK</span> (value >= 0),
+    currency      TEXT <span class="kv">NOT NULL DEFAULT</span> <span class="st">'USD'</span>,
+    stage         TEXT <span class="kv">NOT NULL DEFAULT</span> <span class="st">'prospecting'</span>
+                  <span class="kw">CHECK</span> (stage <span class="kw">IN</span> (
+                    <span class="st">'prospecting'</span>,<span class="st">'qualified'</span>,<span class="st">'proposal'</span>,
+                    <span class="st">'negotiation'</span>,<span class="st">'closed_won'</span>,<span class="st">'closed_lost'</span>)),
+    probability   INT <span class="kw">DEFAULT</span> 10 <span class="kw">CHECK</span> (probability <span class="kw">BETWEEN</span> 0 <span class="kw">AND</span> 100),
+    owner         TEXT,
+    close_date    DATE,
+    product       TEXT,
+    notes         TEXT,
+    created_at    <span class="kv">TIMESTAMPTZ NOT NULL DEFAULT</span> now(),
+    updated_at    <span class="kv">TIMESTAMPTZ NOT NULL DEFAULT</span> now()
+);
+
+<span class="kw">CREATE TABLE</span> activities (
+    id            <span class="kv">SERIAL PRIMARY KEY</span>,
+    contact_id    INT <span class="kw">REFERENCES</span> contacts(id) <span class="kw">ON DELETE CASCADE</span>,
+    deal_id       INT <span class="kw">REFERENCES</span> deals(id) <span class="kw">ON DELETE SET NULL</span>,
+    type          TEXT <span class="kw">CHECK</span> (type <span class="kw">IN</span> (<span class="st">'call'</span>,<span class="st">'email'</span>,<span class="st">'meeting'</span>,<span class="st">'note'</span>,<span class="st">'demo'</span>)),
+    summary       TEXT,
+    created_by    TEXT,
+    created_at    <span class="kv">TIMESTAMPTZ NOT NULL DEFAULT</span> now()
+);
+
+<span class="cm">-- Indexes</span>
+<span class="kw">CREATE INDEX</span> idx_contacts_status    <span class="kw">ON</span> contacts(status);
+<span class="kw">CREATE INDEX</span> idx_contacts_company   <span class="kw">ON</span> contacts(company);
+<span class="kw">CREATE INDEX</span> idx_contacts_country   <span class="kw">ON</span> contacts(country);
+<span class="kw">CREATE INDEX</span> idx_contacts_industry  <span class="kw">ON</span> contacts(industry);
+<span class="kw">CREATE INDEX</span> idx_contacts_name_trgm <span class="kw">ON</span> contacts <span class="kw">USING</span> gin(name gin_trgm_ops);
+<span class="kw">CREATE INDEX</span> idx_deals_stage        <span class="kw">ON</span> deals(stage);
+<span class="kw">CREATE INDEX</span> idx_deals_owner        <span class="kw">ON</span> deals(owner);
+<span class="kw">CREATE INDEX</span> idx_deals_value        <span class="kw">ON</span> deals(value <span class="kw">DESC</span>);
+<span class="kw">CREATE INDEX</span> idx_deals_close_date   <span class="kw">ON</span> deals(close_date);
+
+<span class="cm">-- Auto-update updated_at</span>
+<span class="kw">CREATE OR REPLACE FUNCTION</span> <span class="fn">touch_updated_at</span>()
+<span class="kw">RETURNS TRIGGER LANGUAGE</span> plpgsql <span class="kw">AS</span> $$
+<span class="kw">BEGIN</span> NEW.updated_at = now(); <span class="kw">RETURN</span> NEW; <span class="kw">END</span>;
+$$;
+<span class="kw">CREATE TRIGGER</span> trg_contacts_updated <span class="kw">BEFORE UPDATE ON</span> contacts
+  <span class="kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="fn">touch_updated_at</span>();
+<span class="kw">CREATE TRIGGER</span> trg_deals_updated <span class="kw">BEFORE UPDATE ON</span> deals
+  <span class="kw">FOR EACH ROW EXECUTE FUNCTION</span> <span class="fn">touch_updated_at</span>();</pre>
+  </div>
+
+  <h3>3c. Seed Data Generator</h3>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">generate_seed.py</span></div>
+    <pre><span class="cm">"""
+Generates realistic CRM seed data and writes seed.sql.
+Run: python generate_seed.py
+Then: docker exec -i crm_pg psql -U crm -d crm &lt; seed.sql
+"""</span>
+<span class="kw">import</span> random, datetime
+
+random.seed(<span class="nu">42</span>)  <span class="cm"># Change for different but equally valid data</span>
+
+FIRST = [<span class="st">"Alice"</span>,<span class="st">"Bob"</span>,<span class="st">"Carol"</span>,<span class="st">"David"</span>,<span class="st">"Eva"</span>,<span class="st">"Frank"</span>,<span class="st">"Grace"</span>,
+         <span class="st">"Henry"</span>,<span class="st">"Iris"</span>,<span class="st">"James"</span>,<span class="st">"Karen"</span>,<span class="st">"Leo"</span>,<span class="st">"Maya"</span>,<span class="st">"Nate"</span>,
+         <span class="st">"Minh"</span>,<span class="st">"Linh"</span>,<span class="st">"Huy"</span>,<span class="st">"Thanh"</span>,<span class="st">"Bao"</span>,<span class="st">"Khanh"</span>]
+
+LAST = [<span class="st">"Nguyen"</span>,<span class="st">"Tran"</span>,<span class="st">"Le"</span>,<span class="st">"Smith"</span>,<span class="st">"Jones"</span>,<span class="st">"Brown"</span>,<span class="st">"Wilson"</span>,
+        <span class="st">"Patel"</span>,<span class="st">"Chen"</span>,<span class="st">"Kim"</span>,<span class="st">"Park"</span>,<span class="st">"Muller"</span>,<span class="st">"Hoang"</span>,<span class="st">"Pham"</span>]
+
+COMPANIES = [
+    (<span class="st">"TechCorp VN"</span>,<span class="st">"saas"</span>,<span class="st">"Ho Chi Minh City"</span>,<span class="st">"VN"</span>),
+    (<span class="st">"Acme Insurance"</span>,<span class="st">"insurance"</span>,<span class="st">"Sydney"</span>,<span class="st">"AU"</span>),
+    (<span class="st">"Berlin Fintech GmbH"</span>,<span class="st">"fintech"</span>,<span class="st">"Berlin"</span>,<span class="st">"DE"</span>),
+    (<span class="st">"SG Capital"</span>,<span class="st">"fintech"</span>,<span class="st">"Singapore"</span>,<span class="st">"SG"</span>),
+    (<span class="st">"NY Ventures"</span>,<span class="st">"fintech"</span>,<span class="st">"New York"</span>,<span class="st">"US"</span>),
+    (<span class="st">"Nordic Insurance AB"</span>,<span class="st">"insurance"</span>,<span class="st">"Stockholm"</span>,<span class="st">"SE"</span>),
+    (<span class="st">"HCM Dev Studio"</span>,<span class="st">"saas"</span>,<span class="st">"Ho Chi Minh City"</span>,<span class="st">"VN"</span>),
+    (<span class="st">"VietSoft"</span>,<span class="st">"saas"</span>,<span class="st">"Hanoi"</span>,<span class="st">"VN"</span>),
+]
+
+PRODUCTS = [<span class="st">"workers_comp"</span>,<span class="st">"ctp"</span>,<span class="st">"liability"</span>,<span class="st">"property"</span>,<span class="st">"cyber"</span>,<span class="st">"life"</span>]
+OWNERS   = [<span class="st">"sales_alice"</span>,<span class="st">"sales_bob"</span>,<span class="st">"sales_carol"</span>,<span class="st">"sales_david"</span>]
+SOURCES  = [<span class="st">"website"</span>,<span class="st">"referral"</span>,<span class="st">"cold_outreach"</span>,<span class="st">"event"</span>,<span class="st">"partner"</span>]
+STATUSES = [<span class="st">"active"</span>,<span class="st">"active"</span>,<span class="st">"active"</span>,<span class="st">"lead"</span>,<span class="st">"lead"</span>,<span class="st">"inactive"</span>,<span class="st">"churned"</span>]
+STAGES   = [<span class="st">"prospecting"</span>,<span class="st">"qualified"</span>,<span class="st">"proposal"</span>,<span class="st">"negotiation"</span>,
+            <span class="st">"closed_won"</span>,<span class="st">"closed_won"</span>,<span class="st">"closed_lost"</span>]
+STAGE_PROB = {<span class="st">"prospecting"</span>:<span class="nu">10</span>,<span class="st">"qualified"</span>:<span class="nu">25</span>,<span class="st">"proposal"</span>:<span class="nu">50</span>,
+              <span class="st">"negotiation"</span>:<span class="nu">75</span>,<span class="st">"closed_won"</span>:<span class="nu">100</span>,<span class="st">"closed_lost"</span>:<span class="nu">0</span>}
+TAG_POOL = [<span class="st">"vip"</span>,<span class="st">"renewal-risk"</span>,<span class="st">"upsell"</span>,<span class="st">"new-logo"</span>,<span class="st">"enterprise"</span>,<span class="st">"smb"</span>]
+
+used_emails = set()
+
+<span class="kw">def</span> <span class="fn">unique_email</span>(first, last, company):
+    domain = company.lower().replace(<span class="st">" "</span>,<span class="st">""</span>)[:12] + <span class="st">".com"</span>
+    base   = f<span class="st">"{first.lower()}.{last.lower()}"</span>
+    email  = f<span class="st">"{base}@{domain}"</span>
+    <span class="kw">if</span> email <span class="kw">in</span> used_emails:
+        email = f<span class="st">"{base}{random.randint(2,99)}@{domain}"</span>
+    used_emails.add(email)
+    <span class="kw">return</span> email
+
+<span class="kw">def</span> <span class="fn">rand_date</span>(start=730, end=1):
+    d = random.randint(end, start)
+    <span class="kw">return</span> (datetime.date.today() - datetime.timedelta(days=d)).isoformat()
+
+<span class="kw">def</span> <span class="fn">pg_arr</span>(lst): <span class="kw">return</span> <span class="st">"NULL"</span> <span class="kw">if not</span> lst <span class="kw">else</span> <span class="st">"ARRAY["</span>+<span class="st">","</span>.join(f<span class="st">'"{t}"'</span> <span class="kw">for</span> t <span class="kw">in</span> lst)+<span class="st">"]"</span>
+<span class="kw">def</span> <span class="fn">pg_s</span>(s):    <span class="kw">return</span> <span class="st">"NULL"</span> <span class="kw">if</span> s <span class="kw">is None else</span> <span class="st">"'"</span>+s.replace(<span class="st">"'"</span>,<span class="st">"''"</span>)+<span class="st">"'"</span>
+
+NUM_CONTACTS, NUM_DEALS = <span class="nu">50</span>, <span class="nu">30</span>
+contacts = []
+<span class="kw">for</span> _ <span class="kw">in range</span>(NUM_CONTACTS):
+    first, last, comp = random.choice(FIRST), random.choice(LAST), random.choice(COMPANIES)
+    contacts.append({
+        <span class="st">"name"</span>: f<span class="st">"{first} {last}"</span>, <span class="st">"email"</span>: unique_email(first,last,comp[<span class="nu">0</span>]),
+        <span class="st">"company"</span>:comp[<span class="nu">0</span>], <span class="st">"industry"</span>:comp[<span class="nu">1</span>], <span class="st">"city"</span>:comp[<span class="nu">2</span>], <span class="st">"country"</span>:comp[<span class="nu">3</span>],
+        <span class="st">"status"</span>:random.choice(STATUSES), <span class="st">"source"</span>:random.choice(SOURCES),
+        <span class="st">"assigned_to"</span>:random.choice(OWNERS), <span class="st">"tags"</span>:random.sample(TAG_POOL,k=random.randint(<span class="nu">0</span>,<span class="nu">3</span>)),
+        <span class="st">"notes"</span>:random.choice([<span class="kw">None</span>,<span class="st">"Demo requested"</span>,<span class="st">"Budget approved"</span>,<span class="st">"Referred by partner"</span>]),
+        <span class="st">"created_at"</span>:rand_date()
+    })
+
+cidx = list(range(NUM_CONTACTS)); random.shuffle(cidx)
+deals = []
+<span class="kw">for</span> i <span class="kw">in range</span>(NUM_DEALS):
+    cid = cidx[i % NUM_CONTACTS]+<span class="nu">1</span>; stage = random.choice(STAGES)
+    product = random.choice(PRODUCTS); company = contacts[cid-<span class="nu">1</span>][<span class="st">"company"</span>]
+    deals.append({
+        <span class="st">"contact_id"</span>:cid, <span class="st">"stage"</span>:stage, <span class="st">"probability"</span>:STAGE_PROB[stage],
+        <span class="st">"title"</span>:f<span class="st">"{company} – {product.replace('_',' ').title()} {random.choice(['licence','contract','renewal'])}"</span>,
+        <span class="st">"value"</span>:round(random.uniform(<span class="nu">5000</span>,<span class="nu">500000</span>),<span class="nu">-2</span>), <span class="st">"owner"</span>:contacts[cid-<span class="nu">1</span>][<span class="st">"assigned_to"</span>],
+        <span class="st">"close_date"</span>:rand_date(<span class="nu">60</span>,-<span class="nu">120</span>), <span class="st">"product"</span>:product
+    })
+
+<span class="cm"># ... (write INSERT statements for contacts, deals, activities to seed.sql)</span>
+<span class="cm"># Full code in the original generate_seed.py file</span></pre>
+  </div>
+
+  <h3>3d. Run in Order</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre><span class="cm"># 1. Enable extensions</span>
+docker exec -it crm_pg psql -U crm -d crm -c <span class="st">"CREATE EXTENSION IF NOT EXISTS pg_trgm;"</span>
+
+<span class="cm"># 2. Apply schema</span>
+docker exec -i crm_pg psql -U crm -d crm &lt; schema.sql
+
+<span class="cm"># 3. Generate seed file</span>
+python generate_seed.py
+<span class="cm"># → Written seed.sql: 50 contacts, 30 deals, ~60 activities</span>
+
+<span class="cm"># 4. Load seed data</span>
+docker exec -i crm_pg psql -U crm -d crm &lt; seed.sql</pre>
+  </div>
+
+  <h3>3e. Verify</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre>docker exec -it crm_pg psql -U crm -d crm &lt;&lt; <span class="st">'EOF'</span>
+<span class="kw">SELECT</span> status, <span class="fn">COUNT</span>(*) <span class="kw">FROM</span> contacts <span class="kw">GROUP BY</span> status <span class="kw">ORDER BY</span> <span class="nu">2</span> <span class="kw">DESC</span>;
+<span class="kw">SELECT</span> stage, <span class="fn">COUNT</span>(*), <span class="fn">TO_CHAR</span>(<span class="fn">SUM</span>(value),<span class="st">'FM$999,999,999'</span>) AS total_value
+  <span class="kw">FROM</span> deals <span class="kw">GROUP BY</span> stage <span class="kw">ORDER BY</span> <span class="fn">SUM</span>(value) <span class="kw">DESC</span>;
+<span class="kw">EXPLAIN</span> (<span class="kw">ANALYZE</span>, <span class="kw">BUFFERS</span>) <span class="kw">SELECT</span> * <span class="kw">FROM</span> contacts <span class="kw">WHERE</span> name <span class="kw">ILIKE</span> <span class="st">'%nguyen%'</span>;
+EOF
+<span class="cm"># Look for: Bitmap Index Scan on idx_contacts_name_trgm</span></pre>
+  </div>
+</section>
+
+<!-- ══ STEP 4 ══ -->
+<section class="section" id="step4">
+  <div class="section-eyebrow">Step 4 of 6</div>
+  <h2>Python Environment</h2>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre>python -m venv .venv
+source .venv/bin/activate       <span class="cm"># Windows: .venv\Scripts\activate</span>
+pip install openai psycopg2-binary rich python-dotenv</pre>
+  </div>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">.env</span></div>
+    <pre>OLLAMA_BASE_URL=http://localhost:11434/v1
+OLLAMA_MODEL=qwen2.5:7b
+PG_HOST=localhost
+PG_PORT=5432
+PG_DB=crm
+PG_USER=crm
+PG_PASSWORD=crm_local_pw</pre>
+  </div>
+
+  <div class="callout callout-blue">
+    <p>To swap to GPT-4o later: change <code>OLLAMA_BASE_URL=https://api.openai.com/v1</code> and <code>OLLAMA_MODEL=gpt-4o</code> — no code changes needed.</p>
+  </div>
+</section>
+
+<!-- ══ STEP 5 ══ -->
+<section class="section" id="step5">
+  <div class="section-eyebrow">Step 5 of 6</div>
+  <h2>Write the Tool Layer</h2>
+
+  <h3>db.py — Database helpers</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">db.py</span></div>
+    <pre><span class="kw">import</span> os, psycopg2, psycopg2.extras
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+load_dotenv()
+
+<span class="kw">def</span> <span class="fn">get_conn</span>():
+    <span class="kw">return</span> psycopg2.connect(
+        host=os.getenv(<span class="st">"PG_HOST"</span>), port=os.getenv(<span class="st">"PG_PORT"</span>),
+        dbname=os.getenv(<span class="st">"PG_DB"</span>), user=os.getenv(<span class="st">"PG_USER"</span>),
+        password=os.getenv(<span class="st">"PG_PASSWORD"</span>),
+        cursor_factory=psycopg2.extras.RealDictCursor
+    )
+
+<span class="kw">def</span> <span class="fn">search_contacts</span>(name=<span class="kw">None</span>, company=<span class="kw">None</span>, city=<span class="kw">None</span>,
+                    country=<span class="kw">None</span>, industry=<span class="kw">None</span>, status=<span class="kw">None</span>,
+                    assigned_to=<span class="kw">None</span>, limit=<span class="nu">10</span>):
+    clauses, params = [], []
+    <span class="kw">if</span> name:        clauses.append(<span class="st">"name ILIKE %s"</span>);         params.append(f<span class="st">"%{name}%"</span>)
+    <span class="kw">if</span> company:     clauses.append(<span class="st">"company ILIKE %s"</span>);      params.append(f<span class="st">"%{company}%"</span>)
+    <span class="kw">if</span> city:        clauses.append(<span class="st">"city ILIKE %s"</span>);         params.append(f<span class="st">"%{city}%"</span>)
+    <span class="kw">if</span> country:     clauses.append(<span class="st">"country = %s"</span>);          params.append(country.upper())
+    <span class="kw">if</span> industry:    clauses.append(<span class="st">"industry = %s"</span>);         params.append(industry)
+    <span class="kw">if</span> status:      clauses.append(<span class="st">"status = %s"</span>);           params.append(status)
+    <span class="kw">if</span> assigned_to: clauses.append(<span class="st">"assigned_to = %s"</span>);      params.append(assigned_to)
+    where = (<span class="st">"WHERE "</span> + <span class="st">" AND "</span>.join(clauses)) <span class="kw">if</span> clauses <span class="kw">else</span> <span class="st">""</span>
+    sql = f<span class="st">"""SELECT id, name, email, company, industry, city,
+                     country, status, assigned_to, tags, notes
+              FROM contacts {where} ORDER BY name LIMIT %s"""</span>
+    params.append(limit)
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+            cur.execute(sql, params); <span class="kw">return</span> cur.fetchall()
+
+<span class="kw">def</span> <span class="fn">get_deals</span>(stage=<span class="kw">None</span>, owner=<span class="kw">None</span>, min_value=<span class="kw">None</span>,
+              max_value=<span class="kw">None</span>, product=<span class="kw">None</span>,
+              closing_before=<span class="kw">None</span>, closing_after=<span class="kw">None</span>, limit=<span class="nu">10</span>):
+    clauses, params = [], []
+    <span class="kw">if</span> stage:          clauses.append(<span class="st">"d.stage = %s"</span>);           params.append(stage)
+    <span class="kw">if</span> owner:          clauses.append(<span class="st">"d.owner = %s"</span>);           params.append(owner)
+    <span class="kw">if</span> min_value:      clauses.append(<span class="st">"d.value >= %s"</span>);          params.append(min_value)
+    <span class="kw">if</span> max_value:      clauses.append(<span class="st">"d.value &lt;= %s"</span>);          params.append(max_value)
+    <span class="kw">if</span> product:        clauses.append(<span class="st">"d.product = %s"</span>);         params.append(product)
+    <span class="kw">if</span> closing_before: clauses.append(<span class="st">"d.close_date &lt;= %s"</span>);     params.append(closing_before)
+    <span class="kw">if</span> closing_after:  clauses.append(<span class="st">"d.close_date >= %s"</span>);     params.append(closing_after)
+    where = (<span class="st">"WHERE "</span> + <span class="st">" AND "</span>.join(clauses)) <span class="kw">if</span> clauses <span class="kw">else</span> <span class="st">""</span>
+    sql = f<span class="st">"""SELECT d.id, d.title, d.value, d.stage, d.probability,
+               d.owner, d.close_date, d.product,
+               c.name AS contact_name, c.company, c.country
+        FROM deals d JOIN contacts c ON c.id = d.contact_id
+        {where} ORDER BY d.value DESC LIMIT %s"""</span>
+    params.append(limit)
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+            cur.execute(sql, params); <span class="kw">return</span> cur.fetchall()
+
+<span class="kw">def</span> <span class="fn">get_contact_deals</span>(contact_id):
+    sql = <span class="st">"""SELECT d.*, c.name AS contact_name FROM deals d
+             JOIN contacts c ON c.id = d.contact_id
+             WHERE d.contact_id = %s ORDER BY d.created_at DESC"""</span>
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+            cur.execute(sql, (contact_id,)); <span class="kw">return</span> cur.fetchall()
+
+<span class="kw">def</span> <span class="fn">get_pipeline_summary</span>():
+    sql = <span class="st">"""SELECT stage, COUNT(*) AS deal_count,
+             SUM(value) AS total_value, AVG(value) AS avg_value,
+             SUM(value * probability / 100) AS weighted_value
+             FROM deals GROUP BY stage ORDER BY total_value DESC"""</span>
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+            cur.execute(sql); <span class="kw">return</span> cur.fetchall()
+
+<span class="kw">def</span> <span class="fn">get_contact_activities</span>(contact_id, limit=<span class="nu">10</span>):
+    sql = <span class="st">"""SELECT a.type, a.summary, a.created_by, a.created_at,
+                    d.title AS deal_title
+             FROM activities a LEFT JOIN deals d ON d.id = a.deal_id
+             WHERE a.contact_id = %s ORDER BY a.created_at DESC LIMIT %s"""</span>
+    <span class="kw">with</span> <span class="fn">get_conn</span>() <span class="kw">as</span> conn:
+        <span class="kw">with</span> conn.cursor() <span class="kw">as</span> cur:
+            cur.execute(sql, (contact_id, limit)); <span class="kw">return</span> cur.fetchall()</pre>
+  </div>
+
+  <h3>tools.py — JSON schema for the LLM</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">tools.py</span></div>
+    <pre>TOOLS = [
+  {<span class="st">"type"</span>: <span class="st">"function"</span>, <span class="st">"function"</span>: {
+    <span class="st">"name"</span>: <span class="st">"search_contacts"</span>,
+    <span class="st">"description"</span>: <span class="st">"Search CRM contacts by name, company, city, country, industry, or status."</span>,
+    <span class="st">"parameters"</span>: {<span class="st">"type"</span>:<span class="st">"object"</span>,<span class="st">"properties"</span>:{
+      <span class="st">"name"</span>:       {<span class="st">"type"</span>:<span class="st">"string"</span>},
+      <span class="st">"company"</span>:    {<span class="st">"type"</span>:<span class="st">"string"</span>},
+      <span class="st">"city"</span>:       {<span class="st">"type"</span>:<span class="st">"string"</span>},
+      <span class="st">"country"</span>:    {<span class="st">"type"</span>:<span class="st">"string"</span>,<span class="st">"description"</span>:<span class="st">"ISO 2-letter, e.g. VN, AU, SG"</span>},
+      <span class="st">"industry"</span>:   {<span class="st">"type"</span>:<span class="st">"string"</span>,<span class="st">"enum"</span>:[<span class="st">"insurance"</span>,<span class="st">"fintech"</span>,<span class="st">"saas"</span>,<span class="st">"manufacturing"</span>,<span class="st">"retail"</span>]},
+      <span class="st">"status"</span>:     {<span class="st">"type"</span>:<span class="st">"string"</span>,<span class="st">"enum"</span>:[<span class="st">"active"</span>,<span class="st">"inactive"</span>,<span class="st">"lead"</span>,<span class="st">"churned"</span>]},
+      <span class="st">"assigned_to"</span>:{<span class="st">"type"</span>:<span class="st">"string"</span>},
+      <span class="st">"limit"</span>:      {<span class="st">"type"</span>:<span class="st">"integer"</span>,<span class="st">"default"</span>:<span class="nu">10</span>}
+    }}
+  }},
+  {<span class="st">"type"</span>: <span class="st">"function"</span>, <span class="st">"function"</span>: {
+    <span class="st">"name"</span>: <span class="st">"get_deals"</span>,
+    <span class="st">"description"</span>: <span class="st">"Retrieve deals filtered by stage, owner, value range, product, or close date."</span>,
+    <span class="st">"parameters"</span>: {<span class="st">"type"</span>:<span class="st">"object"</span>,<span class="st">"properties"</span>:{
+      <span class="st">"stage"</span>:         {<span class="st">"type"</span>:<span class="st">"string"</span>,<span class="st">"enum"</span>:[<span class="st">"prospecting"</span>,<span class="st">"qualified"</span>,<span class="st">"proposal"</span>,<span class="st">"negotiation"</span>,<span class="st">"closed_won"</span>,<span class="st">"closed_lost"</span>]},
+      <span class="st">"owner"</span>:         {<span class="st">"type"</span>:<span class="st">"string"</span>},
+      <span class="st">"min_value"</span>:     {<span class="st">"type"</span>:<span class="st">"number"</span>},
+      <span class="st">"max_value"</span>:     {<span class="st">"type"</span>:<span class="st">"number"</span>},
+      <span class="st">"product"</span>:       {<span class="st">"type"</span>:<span class="st">"string"</span>,<span class="st">"enum"</span>:[<span class="st">"workers_comp"</span>,<span class="st">"ctp"</span>,<span class="st">"liability"</span>,<span class="st">"property"</span>,<span class="st">"cyber"</span>,<span class="st">"life"</span>]},
+      <span class="st">"closing_before"</span>:{<span class="st">"type"</span>:<span class="st">"string"</span>,<span class="st">"description"</span>:<span class="st">"ISO date YYYY-MM-DD"</span>},
+      <span class="st">"closing_after"</span>: {<span class="st">"type"</span>:<span class="st">"string"</span>},
+      <span class="st">"limit"</span>:         {<span class="st">"type"</span>:<span class="st">"integer"</span>,<span class="st">"default"</span>:<span class="nu">10</span>}
+    }}
+  }},
+  {<span class="st">"type"</span>: <span class="st">"function"</span>, <span class="st">"function"</span>: {
+    <span class="st">"name"</span>: <span class="st">"get_contact_deals"</span>,
+    <span class="st">"description"</span>: <span class="st">"Get all deals for a specific contact by their numeric ID."</span>,
+    <span class="st">"parameters"</span>: {<span class="st">"type"</span>:<span class="st">"object"</span>,<span class="st">"required"</span>:[<span class="st">"contact_id"</span>],
+      <span class="st">"properties"</span>:{<span class="st">"contact_id"</span>:{<span class="st">"type"</span>:<span class="st">"integer"</span>}}}
+  }},
+  {<span class="st">"type"</span>: <span class="st">"function"</span>, <span class="st">"function"</span>: {
+    <span class="st">"name"</span>: <span class="st">"get_pipeline_summary"</span>,
+    <span class="st">"description"</span>: <span class="st">"Get pipeline summary grouped by stage: counts, totals, weighted value."</span>,
+    <span class="st">"parameters"</span>: {<span class="st">"type"</span>:<span class="st">"object"</span>,<span class="st">"properties"</span>:{}}
+  }},
+  {<span class="st">"type"</span>: <span class="st">"function"</span>, <span class="st">"function"</span>: {
+    <span class="st">"name"</span>: <span class="st">"get_contact_activities"</span>,
+    <span class="st">"description"</span>: <span class="st">"Get activity history (calls, emails, meetings, demos) for a specific contact."</span>,
+    <span class="st">"parameters"</span>: {<span class="st">"type"</span>:<span class="st">"object"</span>,<span class="st">"required"</span>:[<span class="st">"contact_id"</span>],
+      <span class="st">"properties"</span>:{<span class="st">"contact_id"</span>:{<span class="st">"type"</span>:<span class="st">"integer"</span>},<span class="st">"limit"</span>:{<span class="st">"type"</span>:<span class="st">"integer"</span>,<span class="st">"default"</span>:<span class="nu">10</span>}}}
+  }}
+]</pre>
+  </div>
+
+  <h3>chatbot.py — Main chat loop</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">chatbot.py</span></div>
+    <pre><span class="kw">import</span> os, json
+<span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+<span class="kw">from</span> rich.console <span class="kw">import</span> Console
+<span class="kw">from</span> rich.markdown <span class="kw">import</span> Markdown
+<span class="kw">from</span> dotenv <span class="kw">import</span> load_dotenv
+<span class="kw">import</span> db, tools <span class="kw">as</span> tool_defs
+
+load_dotenv()
+console = Console()
+client = OpenAI(base_url=os.getenv(<span class="st">"OLLAMA_BASE_URL"</span>), api_key=<span class="st">"ollama"</span>)
+MODEL  = os.getenv(<span class="st">"OLLAMA_MODEL"</span>)
+
+SYSTEM = <span class="st">"""You are a helpful CRM assistant with access to tools that query
+a PostgreSQL CRM database. Rules:
+- Always use a tool to answer questions about contacts or deals — never guess.
+- Summarise results clearly; use markdown tables for lists.
+- Deal stages: prospecting → qualified → proposal → negotiation → closed_won / closed_lost.
+- probability: prospecting=10%, qualified=25%, proposal=50%, negotiation=75%."""</span>
+
+TOOL_MAP = {
+    <span class="st">"search_contacts"</span>:       db.search_contacts,
+    <span class="st">"get_deals"</span>:             db.get_deals,
+    <span class="st">"get_contact_deals"</span>:     db.get_contact_deals,
+    <span class="st">"get_pipeline_summary"</span>:  db.get_pipeline_summary,
+    <span class="st">"get_contact_activities"</span>:db.get_contact_activities,
+}
+MAX_TOOL_CALLS = <span class="nu">5</span>  <span class="cm"># guard against infinite tool loops</span>
+
+<span class="kw">def</span> <span class="fn">run_tool</span>(name, args):
+    fn = TOOL_MAP.get(name)
+    <span class="kw">if not</span> fn: <span class="kw">return</span> {<span class="st">"error"</span>: f<span class="st">"Unknown tool: {name}"</span>}
+    <span class="kw">try</span>:    <span class="kw">return</span> [dict(r) <span class="kw">for</span> r <span class="kw">in</span> fn(**args)]
+    <span class="kw">except</span> Exception <span class="kw">as</span> e: <span class="kw">return</span> {<span class="st">"error"</span>: str(e)}
+
+<span class="kw">def</span> <span class="fn">chat</span>(history):
+    n = <span class="nu">0</span>
+    <span class="kw">while True</span>:
+        resp = client.chat.completions.create(
+            model=MODEL, messages=history,
+            tools=tool_defs.TOOLS, tool_choice=<span class="st">"auto"</span>)
+        msg = resp.choices[<span class="nu">0</span>].message
+        <span class="kw">if</span> msg.tool_calls <span class="kw">and</span> n &lt; MAX_TOOL_CALLS:
+            history.append(msg)
+            <span class="kw">for</span> tc <span class="kw">in</span> msg.tool_calls:
+                args = json.loads(tc.function.arguments)
+                console.print(f<span class="st">"[dim]  → calling {tc.function.name}({args})[/dim]"</span>)
+                history.append({<span class="st">"role"</span>:<span class="st">"tool"</span>,<span class="st">"tool_call_id"</span>:tc.id,
+                                 <span class="st">"content"</span>:json.dumps(<span class="fn">run_tool</span>(tc.function.name,args),default=str)})
+                n += <span class="nu">1</span>
+        <span class="kw">else</span>:
+            history.append({<span class="st">"role"</span>:<span class="st">"assistant"</span>,<span class="st">"content"</span>:msg.content})
+            console.print(Markdown(msg.content <span class="kw">or</span> <span class="st">""</span>)); <span class="kw">return</span> history
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    console.print(<span class="st">"[bold blue]CRM Chatbot — P1 (Tool Calling)[/bold blue]"</span>)
+    console.print(f<span class="st">"[dim]Model:[/dim] {MODEL}\n"</span>)
+    history = [{<span class="st">"role"</span>:<span class="st">"system"</span>,<span class="st">"content"</span>:SYSTEM}]
+    <span class="kw">while True</span>:
+        <span class="kw">try</span>:    user_input = console.input(<span class="st">"[bold]You:[/bold] "</span>).strip()
+        <span class="kw">except</span>: <span class="kw">break</span>
+        <span class="kw">if</span> user_input.lower() <span class="kw">in</span> (<span class="st">"exit"</span>,<span class="st">"quit"</span>,<span class="st">"bye"</span>): <span class="kw">break</span>
+        <span class="kw">if not</span> user_input: <span class="kw">continue</span>
+        history.append({<span class="st">"role"</span>:<span class="st">"user"</span>,<span class="st">"content"</span>:user_input})
+        history = <span class="fn">chat</span>(history); print()
+
+<span class="kw">if</span> __name__ == <span class="st">"__main__"</span>: <span class="fn">main</span>()</pre>
+  </div>
+</section>
+
+<!-- ══ STEP 6 ══ -->
+<section class="section" id="step6">
+  <div class="section-eyebrow">Step 6 of 6</div>
+  <h2>Run and Verify</h2>
+
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">bash</span></div>
+    <pre>ollama serve &amp;               <span class="cm"># if not running as a service</span>
+docker compose up -d
+source .venv/bin/activate
+python chatbot.py</pre>
+  </div>
+
+  <h3>Validation test queries</h3>
+  <div class="code-wrap">
+    <div class="code-label"><span class="code-lang">test queries</span></div>
+    <pre><span class="cm"># search_contacts</span>
+<span class="st">"Show me all contacts in Vietnam"</span>
+<span class="st">"Find contacts at TechCorp"</span>
+<span class="st">"List all leads"</span>
+<span class="st">"Show me contacts in the fintech industry"</span>
+
+<span class="cm"># get_deals</span>
+<span class="st">"What deals are in the negotiation stage?"</span>
+<span class="st">"Show me deals over $100,000"</span>
+<span class="st">"What workers comp deals do we have?"</span>
+<span class="st">"Which deals close before end of June?"</span>
+
+<span class="cm"># get_pipeline_summary</span>
+<span class="st">"Give me a full pipeline breakdown"</span>
+<span class="st">"What's our total weighted pipeline value?"</span>
+
+<span class="cm"># Multi-turn (search → activities)</span>
+<span class="st">"Find David Tran"</span>
+<span class="st">"What activities have we had with him?"</span>
+
+<span class="cm"># Multi-hop (search → get_contact_deals)</span>
+<span class="st">"Find Alice Nguyen"</span>
+<span class="st">"What deals does she have?"</span></pre>
+  </div>
+</section>
+
+<!-- ══ HARDENING ══ -->
+<section class="section" id="hardening">
+  <div class="section-eyebrow">Before customer demo</div>
+  <h2>Hardening Checklist</h2>
+  <ul class="checklist">
+    <li><span class="check-box"></span>Add a read-only Postgres role: <code>CREATE USER crm_readonly WITH PASSWORD '...'; GRANT SELECT ON ALL TABLES IN SCHEMA public TO crm_readonly;</code> — update <code>.env</code> to use it</li>
+    <li><span class="check-box"></span><code>MAX_TOOL_CALLS = 5</code> guard is already in <code>chatbot.py</code> — prevents infinite tool loops</li>
+    <li><span class="check-box"></span><code>run_tool()</code> has <code>try/except</code> — errors return a message back to the LLM rather than crashing</li>
+    <li><span class="check-box"></span>Consider trimming <code>history</code> after ~20 turns to avoid context window overflow on long sessions</li>
+  </ul>
+</section>
+
+<!-- ══ P2 TEASER ══ -->
+<section class="section" id="p2">
+  <div class="section-eyebrow">What's next</div>
+  <h2>Phase 2 — pgvector</h2>
+  <div class="p2-teaser">
+    <h3>Adds semantic search for fuzzy queries P1 can't handle</h3>
+    <ul>
+      <li><em>"Find contacts similar to our Singapore clients"</em></li>
+      <li><em>"Anyone in fintech we haven't contacted recently"</em></li>
+      <li><em>"Find companies that look like Acme Insurance"</em></li>
+    </ul>
+    <p style="margin-top:14px;font-size:13px;color:#8b949e">P2 adds: <code>pgvector</code> extension on the same Postgres instance · <code>contact_embeddings</code> table with HNSW index (<code>vector(768)</code>) · local embedding model (<code>nomic-embed-text</code> via Ollama) · background sync worker · hybrid queries: <code>embedding &lt;=&gt; $1</code> + SQL WHERE filters in one round-trip.</p>
+    <p style="font-size:13px;color:#8b949e;margin-top:6px">The tool calling layer built in P1 is <strong style="color:#e6edf3">unchanged</strong> — P2 just adds a new <code>semantic_search_contacts</code> tool alongside the existing ones.</p>
+  </div>
+</section>
+
+<footer class="footer">
+  <span>Phase 1 · CRM Chatbot Tool Calling</span>
+  <span>Ollama · qwen2.5:7b · PostgreSQL 16 · Python 3.11+</span>
+</footer>
+
+</main>
+</div>
+
+<script>
+// Highlight active nav item on scroll
+const sections = document.querySelectorAll('.section[id]');
+const navItems = document.querySelectorAll('.nav-item');
+const obs = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if(e.isIntersecting){
+      navItems.forEach(n => n.classList.remove('active'));
+      const active = document.querySelector(`.nav-item[href="#${e.target.id}"]`);
+      if(active) active.classList.add('active');
+    }
+  });
+}, {threshold:0.3});
+sections.forEach(s => obs.observe(s));
+</script>
+</body>
+</html>

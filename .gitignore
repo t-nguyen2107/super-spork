@@ -151,6 +151,7 @@ activemq-data/
 
 # Environments
 .env
+!.env.sample
 .envrc
 .venv
 env/
@@ -218,3 +219,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Agent/IDE config files
+CLAUDE.md
+.claude/
+.opencode/
+
+# Markdown docs (project-specific)
+*.md
+!README.md
+!RESTORE_DB.md
+
+# Generated results
+*_results.json
+
+# Large generated SQL
+sql/seed_gen.sql
+
+# Large DB dump (287MB, exceeds GitHub 100MB limit)
+db_embedded.sql.gz
