@@ -23,7 +23,7 @@ python main.py
 
 **Prerequisites:** Docker, Python 3.10+, LM Studio running with a chat model loaded (e.g. `google/gemma-4-e4b`).
 
-For the full 80k-contact dataset with pre-built embeddings, see [RESTORE_DB.md](RESTORE_DB.md).
+For the full 80k-contact dataset with pre-built embeddings, download [`db_embedded.sql.gz`](https://drive.google.com/file/d/1aTC7Xd5-XO_h3yuHHhMdez1WsWh5zhrR/view?usp=sharing) (287MB) and follow [RESTORE_DB.md](RESTORE_DB.md).
 
 ## Project Phases
 

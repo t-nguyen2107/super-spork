@@ -19,9 +19,11 @@ Wait ~10s for the container to be ready:
 docker exec crm_pg pg_isready -U crm
 ```
 
-## Step 2: Restore the Pre-Embedded Database
+## Step 2: Download & Restore the Pre-Embedded Database
 
-The file `db_embedded.sql.gz` (287MB) contains:
+Download `db_embedded.sql.gz` (287MB) from [Google Drive](https://drive.google.com/file/d/1aTC7Xd5-XO_h3yuHHhMdez1WsWh5zhrR/view?usp=sharing) and place it in the project root.
+
+The file contains:
 - 80,000 contacts
 - ~8,000 deals
 - Activities
